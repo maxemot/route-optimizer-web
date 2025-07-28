@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Оптимизатор Маршрутов</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚚 Оптимизатор Маршрутов</h1>
+            <p>Найдите самый быстрый маршрут для ваших поездок</p>
+        </header>
+
+        <main>
+            <div class="input-section">
+                <h2>Добавьте адреса</h2>
+                <div class="address-input-container">
+                    <div class="address-input-group">
+                        <label for="start-address">Начальная точка (дом, склад):</label>
+                        <input type="text" id="start-address" placeholder="Москва, Красная площадь, 1" required>
+                        <div class="coordinates-display" id="start-coords"></div>
+                    </div>
+                </div>
+
+                <div id="additional-addresses">
+                    <div class="address-input-group">
+                        <label for="address-1">Адрес 1:</label>
+                        <input type="text" id="address-1" placeholder="Введите адрес">
+                        <div class="coordinates-display" id="coords-1"></div>
+                        <button type="button" class="remove-address" onclick="removeAddress(1)">✕</button>
+                    </div>
+                    <div class="address-input-group">
+                        <label for="address-2">Адрес 2:</label>
+                        <input type="text" id="address-2" placeholder="Введите адрес">
+                        <div class="coordinates-display" id="coords-2"></div>
+                        <button type="button" class="remove-address" onclick="removeAddress(2)">✕</button>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <button type="button" id="add-address-btn" onclick="addAddress()">+ Добавить адрес</button>
+                    <button type="button" id="optimize-btn" onclick="optimizeRoute()">Построить оптимальный маршрут</button>
+                </div>
+            </div>
+
+            <div class="result-section" id="result-section" style="display: none;">
+                <div id="loader" class="loader-container">
+                    <div class="spinner"></div>
+                    <p>Построение маршрута...</p>
+                </div>
+
+                <div id="results" class="results-container" style="display: none;">
+                    <h2>Маршрут</h2>
+                    <div id="route-steps" class="route-container"></div>
+                    
+                    <h2>Информация по маршруту</h2>
+                    <div class="route-info">
+                        <p id="total-distance"></p>
+                        <p id="total-duration"></p>
+                    </div>
+                    
+                    <h2>Ссылка на Яндекс карты</h2>
+                    <div class="button-group">
+                        <a id="open-link-btn" href="#" target="_blank" class="button">Открыть в новой вкладке</a>
+                        <button id="copy-link-btn" class="button button-secondary">Копировать ссылку</button>
+                    </div>
+                    <p id="copy-status"></p>
+                </div>
+                
+                <div id="error" class="error-container" style="display: none;"></div>
+            </div>
+        </main>
+
+        <footer>
+            <p>Используется Яндекс.Геокодер для определения координат</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html> 
