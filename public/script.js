@@ -63,7 +63,7 @@ function initializeEventListeners() {
 
     // Закрытие модального окна по клику вне его
     window.addEventListener('click', function(event) {
-        if (event.target.classList.contains('modal')) {
+        if (event.target.classList.contains('modal') && event.target.classList.contains('show')) {
             closeModal(event.target);
         }
     });
@@ -81,11 +81,11 @@ function initializeEventListeners() {
 
 // Работа с модальными окнами
 function openModal(modal) {
-    modal.style.display = 'block';
+    modal.classList.add('show');
 }
 
 function closeModal(modal) {
-    modal.style.display = 'none';
+    modal.classList.remove('show');
     if (modal === deliveryModal) {
         clearDeliveryForm();
     }
