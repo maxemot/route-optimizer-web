@@ -25,6 +25,27 @@ app.get('/readme', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'readme.html'));
 });
 
+// API endpoint для получения времени релиза
+app.get('/api/release-time', (req, res) => {
+  // Фиксированное время релиза для текущей версии
+  const releaseTime = process.env.RELEASE_TIME || "2025-01-28T07:15:00.000Z";
+  
+  // Форматируем в нужный формат
+  const date = new Date(releaseTime);
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+  
+  const formattedTime = `${day}.${month} ${hours}:${minutes}:${seconds}`;
+  
+  res.json({ 
+    releaseTime: formattedTime,
+    timestamp: releaseTime
+  });
+});
+
 // API endpoint для геокодирования
 app.post('/api/geocode', async (req, res) => {
     try {

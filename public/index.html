@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>🚚 Система управления доставками</title>
-    <link rel="stylesheet" href="styles.css?v=5">
+    <link rel="stylesheet" href="styles.css?v=6">
 </head>
 <body>
     <div class="container">
@@ -137,20 +137,28 @@
         </div>
     </div>
 
-    <script>
+        <script>
         // Отображаем дату и время релиза
-        document.addEventListener('DOMContentLoaded', function() {
-            const now = new Date();
-            const day = String(now.getDate()).padStart(2, '0');
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            const seconds = String(now.getSeconds()).padStart(2, '0');
-            
-            const releaseTime = `${day}.${month} ${hours}:${minutes}:${seconds}`;
-            document.getElementById('release-time').textContent = `(релиз: ${releaseTime})`;
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                const response = await fetch('/api/release-time');
+                const data = await response.json();
+                document.getElementById('release-time').textContent = `(релиз: ${data.releaseTime})`;
+            } catch (error) {
+                console.error('Ошибка получения времени релиза:', error);
+                // Fallback на текущее время
+                const now = new Date();
+                const day = String(now.getDate()).padStart(2, '0');
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const seconds = String(now.getSeconds()).padStart(2, '0');
+                
+                const releaseTime = `${day}.${month} ${hours}:${minutes}:${seconds}`;
+                document.getElementById('release-time').textContent = `(релиз: ${releaseTime})`;
+            }
         });
     </script>
-    <script src="script.js?v=5"></script>
+    <script src="script.js?v=6"></script>
 </body>
 </html> 
