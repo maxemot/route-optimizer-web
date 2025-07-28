@@ -117,7 +117,7 @@ app.post('/api/deliveries', async (req, res) => {
 });
 
 app.get('/api/release-time', (req, res) => {
-    const releaseTime = "2025-07-28T07:12:26.000Z";
+    const releaseTime = "2025-07-28T07:15:53.000Z";
     const date = new Date(releaseTime);
     const mskDate = new Date(date.getTime() + (3 * 60 * 60 * 1000));
     const day = String(mskDate.getUTCDate()).padStart(2, '0');

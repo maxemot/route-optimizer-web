@@ -338,8 +338,6 @@ function createDeliveryRow(delivery) {
     const statusBadge = getStatusBadge(delivery.status);
     let routeCell = '—';
     if (delivery.routeId) {
-        // Убрали отсюда формирование ссылки, оно будет в другом месте, 
-        // так как для полной ссылки нужны все точки маршрута
         routeCell = `<span class="route-link" data-route-id="${delivery.routeId}">${delivery.routeId}</span>`;
     }
 
@@ -356,7 +354,6 @@ function createDeliveryRow(delivery) {
         <td>${routeCell}</td>
     `;
     
-    // Добавляем обработчик на клик по номеру маршрута
     const routeLink = row.querySelector('.route-link');
     if (routeLink) {
         routeLink.addEventListener('click', () => openCompleteRouteInYandexMaps(delivery.routeId));
