@@ -3,13 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>🚚 Система управления доставками</title>
-    <link rel="stylesheet" href="styles.css?v=2">
+    <link rel="stylesheet" href="styles.css?v=3">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>🚚 Система управления доставками</h1>
+            <h1>🚚 Система управления доставками <span id="release-time" class="release-time"></span></h1>
             <p>Создавайте доставки, оптимизируйте маршруты и отслеживайте статусы</p>
         </header>
 
@@ -131,6 +134,20 @@
         </div>
     </div>
 
-    <script src="script.js?v=2"></script>
+    <script>
+        // Отображаем дату и время релиза
+        document.addEventListener('DOMContentLoaded', function() {
+            const now = new Date();
+            const day = String(now.getDate()).padStart(2, '0');
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            
+            const releaseTime = `${day}.${month} ${hours}:${minutes}:${seconds}`;
+            document.getElementById('release-time').textContent = `(релиз: ${releaseTime})`;
+        });
+    </script>
+    <script src="script.js?v=3"></script>
 </body>
 </html> 
