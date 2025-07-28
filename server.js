@@ -58,6 +58,7 @@ app.get('/api/deliveries', async (req, res) => {
         const deliveries = await kv.get('deliveries');
         res.json(deliveries || []);
     } catch (error) {
+        console.error('Ошибка получения доставок из KV:', error);
         res.status(500).json({ error: 'Не удалось получить доставки' });
     }
 });
@@ -78,16 +79,18 @@ app.post('/api/deliveries', async (req, res) => {
         await kv.set('deliveries', updatedDeliveries);
         await kv.set('nextDeliveryId', nextId + 1);
         
+        console.log(`📦 Добавлена новая доставка: #${newDelivery.id} ${newDelivery.address}`);
         io.emit('new_delivery', newDelivery);
         res.status(201).json(newDelivery);
 
     } catch (error) {
+        console.error('Ошибка сохранения доставки в KV:', error);
         res.status(500).json({ error: 'Не удалось сохранить доставку' });
     }
 });
 
 app.get('/api/release-time', (req, res) => {
-    const releaseTime = "2025-07-28T07:39:28.000Z";
+    const releaseTime = "2025-07-28T07:42:19.000Z";
     const date = new Date(releaseTime);
     const mskDate = new Date(date.getTime() + (3 * 60 * 60 * 1000));
     const day = String(mskDate.getUTCDate()).padStart(2, '0');
@@ -113,8 +116,10 @@ app.post('/api/geocode', async (req, res) => {
         const data = await response.json();
         if (!data.response?.GeoObjectCollection?.featureMember?.length) return res.status(404).json({ error: 'Адрес не найден' });
         const geoObject = data.response.GeoObjectCollection.featureMember[0].GeoObject;
+        console.log(`✅ Координаты найдены: ${geoObject.Point.pos}`);
         res.json({ coordinates: geoObject.Point.pos, fullAddress: geoObject.metaDataProperty.GeocoderMetaData.text });
     } catch (error) {
+        console.error('❌ Ошибка геокодирования:', error);
         res.status(500).json({ error: 'Ошибка при геокодировании адреса' });
     }
 });
@@ -130,6 +135,9 @@ app.post('/api/optimize-route', async (req, res) => {
         addresses.unshift(startPoint.address);
         coordinates.unshift(startPoint.coordinates);
 
+        console.log(`🚗 Оптимизация маршрута для ${addresses.length} точек (включая старт/финиш):`);
+        addresses.forEach((addr, i) => console.log(`  ${i}. ${addr} (${coordinates[i]})`));
+
         const distanceMatrix = await calculateMockDistanceMatrix(coordinates);
         const solution = solveTsp(distanceMatrix.duration, distanceMatrix.distance);
         
@@ -139,13 +147,18 @@ app.post('/api/optimize-route', async (req, res) => {
         
         const yandexMapsUrl = 'https://yandex.ru/maps/?rtext=' + orderedAddresses.map(addr => encodeURIComponent(addr)).join('~') + '&rtt=auto';
 
-        res.json({
+        const result = {
             orderedAddresses,
             totalDistance: formatDistance(solution.distance),
             totalDuration: formatDuration(solution.duration),
-            yandexMapsUrl
-        });
+            yandexMapsUrl,
+            calculatedAt: new Date().toISOString()
+        };
+
+        console.log(`✅ Маршрут построен: ${result.totalDistance.text}, ${result.totalDuration.text}`);
+        res.json(result);
     } catch (error) {
+        console.error('❌ Ошибка при оптимизации маршрута:', error);
         res.status(500).json({ error: 'Внутренняя ошибка сервера при оптимизации маршрута' });
     }
 });
@@ -165,14 +178,14 @@ async function calculateMockDistanceMatrix(coordinates) {
             const coord2 = coordinates[j].split(' ').map(parseFloat);
             const distance = calculateStraightDistance(coord1[1], coord1[0], coord2[1], coord2[0]);
             distanceMatrix[i][j] = distance;
-            durationMatrix[i][j] = Math.round(distance / 16.67); // ~60 km/h
+            durationMatrix[i][j] = Math.round(distance / 16.67); // ~60 km/h в м/с
         }
     }
     return { distance: distanceMatrix, duration: durationMatrix };
 }
 
 function calculateStraightDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371000;
+    const R = 6371000; // Radius of the earth in m
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
     const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
@@ -201,6 +214,9 @@ function solveTsp(timeMatrix, distanceMatrix) {
     let bestDistance = distanceMatrix[0][bestPath[0]];
     for (let i = 0; i < bestPath.length - 1; i++) { bestDistance += distanceMatrix[bestPath[i]][bestPath[i+1]]; }
     bestDistance += distanceMatrix[bestPath[bestPath.length - 1]][0];
+    if (minDuration === Infinity) {
+        throw new Error("Невозможно построить маршрут");
+    }
     return { path: bestPath, duration: minDuration, distance: bestDistance };
 }
 
