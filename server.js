@@ -10,6 +10,16 @@ const { Server } = require("socket.io");
 const formatDeliveryId = (id) => `Д-${String(id).padStart(4, '0')}`;
 const formatRouteId = (id) => `М-${String(id).padStart(4, '0')}`;
 const parseId = (formattedId) => parseInt(formattedId.split('-')[1], 10);
+const formatCreationDate = (isoString) => {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    const mskDate = new Date(date.getTime() + (3 * 60 * 60 * 1000)); // +3 часа для МСК
+    const day = String(mskDate.getUTCDate()).padStart(2, '0');
+    const month = String(mskDate.getUTCMonth() + 1); // Месяцы от 0 до 11
+    const hours = String(mskDate.getUTCHours()).padStart(2, '0');
+    const minutes = String(mskDate.getUTCMinutes()).padStart(2, '0');
+    return `${day}.${month} ${hours}:${minutes}`;
+};
 
 const app = express();
 const server = http.createServer(app);
@@ -99,7 +109,8 @@ app.post('/api/routes', async (req, res) => {
         const formattedDeliveriesToUpdate = deliveriesToUpdate.map(d => ({
             ...d,
             id: formatDeliveryId(d.id),
-            routeId: d.routeId ? formatRouteId(d.routeId) : null
+            routeId: d.routeId ? formatRouteId(d.routeId) : null,
+            createdAt: formatCreationDate(d.createdAt)
         }));
         io.emit('deliveries_updated', formattedDeliveriesToUpdate);
         console.log(`🗺️ Создан новый маршрут #${routeId} для доставок: ${numericDeliveryIds.join(', ')}`);
@@ -157,7 +168,8 @@ app.get('/api/deliveries', async (req, res) => {
         const formattedDeliveries = deliveries.map(d => ({
             ...d,
             id: formatDeliveryId(d.id),
-            routeId: d.routeId ? formatRouteId(d.routeId) : null
+            routeId: d.routeId ? formatRouteId(d.routeId) : null,
+            createdAt: formatCreationDate(d.createdAt)
         }));
         res.json(formattedDeliveries);
     } catch (error) {
@@ -172,6 +184,7 @@ app.post('/api/deliveries', async (req, res) => {
         if (!newDelivery || !newDelivery.address || !newDelivery.coordinates) {
             return res.status(400).json({ error: 'Некорректные данные для доставки' });
         }
+        newDelivery.createdAt = new Date().toISOString(); // Добавляем дату создания
 
         const deliveries = await kv.get('deliveries') || [];
         const nextId = (await kv.get('nextDeliveryId')) || 1;
@@ -184,10 +197,11 @@ app.post('/api/deliveries', async (req, res) => {
         
         console.log(`📦 Добавлена новая доставка: #${newDelivery.id} ${newDelivery.address}`);
         
-        // Форматируем ID перед отправкой по WebSocket
+        // Форматируем ID и дату перед отправкой по WebSocket
         const formattedDelivery = {
             ...newDelivery,
-            id: formatDeliveryId(newDelivery.id)
+            id: formatDeliveryId(newDelivery.id),
+            createdAt: formatCreationDate(newDelivery.createdAt)
         };
         io.emit('new_delivery', formattedDelivery);
         res.status(201).json(formattedDelivery);

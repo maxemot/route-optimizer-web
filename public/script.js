@@ -334,6 +334,7 @@ function createDeliveryRow(delivery) {
     const routeCell = delivery.routeId
         ? `<a href="#" class="route-link" onclick="openRouteFromLink(event)" data-route="${delivery.routeId}">${delivery.routeId}</a>`
         : '';
+    const creationDate = delivery.createdAt || ''; // Получаем дату
 
     row.innerHTML = `
         <td>
@@ -345,6 +346,7 @@ function createDeliveryRow(delivery) {
         <td>${statusBadge}</td>
         <td>${delivery.volume} м³</td>
         <td>${delivery.timeAtPoint} мин</td>
+        <td>${creationDate}</td>
         <td>${routeCell}</td>
     `;
 
