@@ -90,3 +90,4 @@ venv.bak/
 
 # Кроме примера
 !example.jpg 
+/tests/ 
