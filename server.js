@@ -91,21 +91,26 @@ app.post('/api/deliveries', async (req, res) => {
     }
 });
 
-app.get('/api/release-time', (req, res) => {
-    const releaseTime = "2025-07-28T17:51:59.000Z";
-    const date = new Date(releaseTime);
-    const mskDate = new Date(date.getTime() + (3 * 60 * 60 * 1000));
-    const day = String(mskDate.getUTCDate()).padStart(2, '0');
-    const month = String(mskDate.getUTCMonth() + 1).padStart(2, '0');
-    const hours = String(mskDate.getUTCHours()).padStart(2, '0');
-    const minutes = String(mskDate.getUTCMinutes()).padStart(2, '0');
-    const seconds = String(mskDate.getUTCSeconds()).padStart(2, '0');
-    const formattedTime = `${day}.${month} ${hours}:${minutes}:${seconds}`;
-  
-    res.json({ 
-        releaseTime: formattedTime,
-        timestamp: releaseTime
-    });
+app.get('/api/release-time', async (req, res) => {
+    try {
+        const releaseTime = await kv.get('releaseTime') || new Date().toISOString();
+        const date = new Date(releaseTime);
+        const mskDate = new Date(date.getTime() + (3 * 60 * 60 * 1000));
+        const day = String(mskDate.getUTCDate()).padStart(2, '0');
+        const month = String(mskDate.getUTCMonth() + 1).padStart(2, '0');
+        const hours = String(mskDate.getUTCHours()).padStart(2, '0');
+        const minutes = String(mskDate.getUTCMinutes()).padStart(2, '0');
+        const seconds = String(mskDate.getUTCSeconds()).padStart(2, '0');
+        const formattedTime = `${day}.${month} ${hours}:${minutes}:${seconds}`;
+    
+        res.json({ 
+            releaseTime: formattedTime,
+            timestamp: releaseTime
+        });
+    } catch (error) {
+        console.error('Ошибка получения времени релиза:', error);
+        res.status(500).json({ error: 'Не удалось получить время релиза' });
+    }
 });
 
 app.post('/api/geocode', async (req, res) => {
