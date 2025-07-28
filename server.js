@@ -28,7 +28,7 @@ app.get('/readme', (req, res) => {
 // API endpoint для получения времени релиза
 app.get('/api/release-time', (req, res) => {
   // Фиксированное время релиза для текущей версии
-  const releaseTime = process.env.RELEASE_TIME || "2025-01-28T07:15:00.000Z";
+  const releaseTime = process.env.RELEASE_TIME || "2025-07-28T09:10:00.000Z";
   
   // Форматируем в нужный формат
   const date = new Date(releaseTime);
