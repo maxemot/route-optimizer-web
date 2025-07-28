@@ -3,79 +3,132 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Оптимизатор Маршрутов</title>
+    <title>🚚 Система управления доставками</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>🚚 Оптимизатор Маршрутов</h1>
-            <p>Найдите самый быстрый маршрут для ваших поездок</p>
+            <h1>🚚 Система управления доставками</h1>
+            <p>Создавайте доставки, оптимизируйте маршруты и отслеживайте статусы</p>
         </header>
 
-        <main>
-            <div class="input-section">
-                <h2>Добавьте адреса</h2>
-                <div class="address-input-container">
-                    <div class="address-input-group">
-                        <label for="start-address">Начальная точка (дом, склад):</label>
-                        <input type="text" id="start-address" placeholder="Москва, Красная площадь, 1" required>
-                        <div class="coordinates-display" id="start-coords"></div>
+        <div class="controls">
+            <button id="add-delivery-btn" class="btn btn-primary">
+                ➕ Добавить доставку
+            </button>
+            <button id="optimize-route-btn" class="btn btn-success" disabled>
+                🗺️ Построить маршрут
+            </button>
+            <span id="selected-count" class="selected-info">Выбрано: 0 доставок</span>
+        </div>
+
+        <div class="table-container">
+            <table id="deliveries-table" class="deliveries-table">
+                <thead>
+                    <tr>
+                        <th>
+                            <input type="checkbox" id="select-all">
+                        </th>
+                        <th>№ Доставки</th>
+                        <th>Адрес</th>
+                        <th>Координаты</th>
+                        <th>Статус</th>
+                        <th>Объем (м³)</th>
+                        <th>На точке (мин)</th>
+                        <th>№ Маршрута</th>
+                    </tr>
+                </thead>
+                <tbody id="deliveries-tbody">
+                    <!-- Строки будут добавляться динамически -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Модальное окно добавления доставки -->
+        <div id="delivery-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>➕ Добавить новую доставку</h3>
+                    <span class="close">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="delivery-address">Адрес доставки:</label>
+                        <input type="text" id="delivery-address" placeholder="Например: Москва, ул. Тверская, 1">
+                        <div id="address-coordinates" class="coordinates-display"></div>
+                        <div id="address-error" class="error-message"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="delivery-volume">Объем (м³):</label>
+                            <input type="number" id="delivery-volume" step="0.1" min="0" value="1.0">
+                        </div>
+                        <div class="form-group">
+                            <label for="delivery-time">Время на точке (мин):</label>
+                            <input type="number" id="delivery-time" min="1" value="15">
+                        </div>
                     </div>
                 </div>
-
-                <div id="additional-addresses">
-                    <div class="address-input-group">
-                        <label for="address-1">Адрес 1:</label>
-                        <input type="text" id="address-1" placeholder="Введите адрес">
-                        <div class="coordinates-display" id="coords-1"></div>
-                        <button type="button" class="remove-address" onclick="removeAddress(1)">✕</button>
-                    </div>
-                    <div class="address-input-group">
-                        <label for="address-2">Адрес 2:</label>
-                        <input type="text" id="address-2" placeholder="Введите адрес">
-                        <div class="coordinates-display" id="coords-2"></div>
-                        <button type="button" class="remove-address" onclick="removeAddress(2)">✕</button>
-                    </div>
-                </div>
-
-                <div class="controls">
-                    <button type="button" id="add-address-btn" onclick="addAddress()">+ Добавить адрес</button>
-                    <button type="button" id="optimize-btn" onclick="optimizeRoute()">Построить оптимальный маршрут</button>
+                <div class="modal-footer">
+                    <button id="cancel-delivery" class="btn btn-secondary">Отмена</button>
+                    <button id="save-delivery" class="btn btn-primary">Сохранить</button>
                 </div>
             </div>
+        </div>
 
-            <div class="result-section" id="result-section" style="display: none;">
-                <div id="loader" class="loader-container">
-                    <div class="spinner"></div>
-                    <p>Построение маршрута...</p>
+        <!-- Модальное окно результатов маршрута -->
+        <div id="route-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>🗺️ Маршрут построен</h3>
+                    <span class="close">&times;</span>
                 </div>
-
-                <div id="results" class="results-container" style="display: none;">
-                    <h2>Маршрут</h2>
-                    <div id="route-steps" class="route-container"></div>
-                    
-                    <h2>Информация по маршруту</h2>
-                    <div class="route-info">
-                        <p id="total-distance"></p>
-                        <p id="total-duration"></p>
+                <div class="modal-body">
+                    <div id="route-info">
+                        <div class="route-summary">
+                            <div class="summary-item">
+                                <span class="label">Номер маршрута:</span>
+                                <span id="route-number" class="value"></span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="label">Доставок в маршруте:</span>
+                                <span id="deliveries-count" class="value"></span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="label">Общее расстояние:</span>
+                                <span id="total-distance" class="value"></span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="label">Общее время:</span>
+                                <span id="total-duration" class="value"></span>
+                            </div>
+                        </div>
+                        
+                        <div class="route-steps">
+                            <h4>Порядок доставок:</h4>
+                            <div id="route-steps-list"></div>
+                        </div>
+                        
+                        <div class="route-actions">
+                            <button id="open-yandex-maps" class="btn btn-success">
+                                🗺️ Открыть в Яндекс.Картах
+                            </button>
+                            <button id="copy-route-link" class="btn btn-secondary">
+                                📋 Копировать ссылку
+                            </button>
+                        </div>
                     </div>
-                    
-                    <h2>Ссылка на Яндекс карты</h2>
-                    <div class="button-group">
-                        <a id="open-link-btn" href="#" target="_blank" class="button">Открыть в новой вкладке</a>
-                        <button id="copy-link-btn" class="button button-secondary">Копировать ссылку</button>
-                    </div>
-                    <p id="copy-status"></p>
+                    <div id="route-error" class="error-message"></div>
                 </div>
-                
-                <div id="error" class="error-container" style="display: none;"></div>
             </div>
-        </main>
+        </div>
 
-        <footer>
-            <p>Используется Яндекс.Геокодер для определения координат</p>
-        </footer>
+        <!-- Loader -->
+        <div id="loader" class="loader hidden">
+            <div class="spinner"></div>
+            <p>Обработка...</p>
+        </div>
     </div>
 
     <script src="script.js"></script>

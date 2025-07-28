@@ -1,320 +1,453 @@
 // Глобальные переменные
-let addressCounter = 2;
-let geocodedAddresses = new Map(); // Кэш для координат
+let deliveries = [];
+let nextDeliveryId = 1;
+let nextRouteId = 1;
+let geocodedAddresses = {};
 
-// Инициализация при загрузке страницы
+// DOM элементы
+const addDeliveryBtn = document.getElementById('add-delivery-btn');
+const optimizeRouteBtn = document.getElementById('optimize-route-btn');
+const selectedCount = document.getElementById('selected-count');
+const deliveriesTable = document.getElementById('deliveries-table');
+const deliveriesTbody = document.getElementById('deliveries-tbody');
+const selectAllCheckbox = document.getElementById('select-all');
+
+// Модальные окна
+const deliveryModal = document.getElementById('delivery-modal');
+const routeModal = document.getElementById('route-modal');
+const loader = document.getElementById('loader');
+
+// Элементы формы добавления доставки
+const deliveryAddress = document.getElementById('delivery-address');
+const deliveryVolume = document.getElementById('delivery-volume');
+const deliveryTime = document.getElementById('delivery-time');
+const addressCoordinates = document.getElementById('address-coordinates');
+const addressError = document.getElementById('address-error');
+const saveDeliveryBtn = document.getElementById('save-delivery');
+const cancelDeliveryBtn = document.getElementById('cancel-delivery');
+
+// Элементы результатов маршрута
+const routeNumber = document.getElementById('route-number');
+const deliveriesCount = document.getElementById('deliveries-count');
+const totalDistance = document.getElementById('total-distance');
+const totalDuration = document.getElementById('total-duration');
+const routeStepsList = document.getElementById('route-steps-list');
+const openYandexMapsBtn = document.getElementById('open-yandex-maps');
+const copyRouteLinkBtn = document.getElementById('copy-route-link');
+const routeError = document.getElementById('route-error');
+
+let currentRouteData = null;
+
+// Инициализация
 document.addEventListener('DOMContentLoaded', function() {
-    // Добавляем слушатели событий для начальных полей
-    setupAddressListeners();
-    
-    // Проверяем готовность формы при каждом изменении
-    document.addEventListener('input', checkFormReadiness);
+    initializeEventListeners();
+    updateUI();
 });
 
-// Настройка слушателей событий для полей адресов
-function setupAddressListeners() {
-    const allInputs = document.querySelectorAll('input[type="text"]');
-    allInputs.forEach(input => {
-        // Геокодирование при потере фокуса
-        input.addEventListener('blur', handleAddressBlur);
-        
-        // Сброс координат при изменении адреса
-        input.addEventListener('input', handleAddressInput);
+function initializeEventListeners() {
+    // Кнопки управления
+    addDeliveryBtn.addEventListener('click', openDeliveryModal);
+    optimizeRouteBtn.addEventListener('click', optimizeSelectedRoute);
+    selectAllCheckbox.addEventListener('change', toggleSelectAll);
+
+    // Модальные окна
+    const closeButtons = document.querySelectorAll('.close');
+    closeButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const modal = this.closest('.modal');
+            closeModal(modal);
+        });
     });
+
+    // Закрытие модального окна по клику вне его
+    window.addEventListener('click', function(event) {
+        if (event.target.classList.contains('modal')) {
+            closeModal(event.target);
+        }
+    });
+
+    // Форма добавления доставки
+    deliveryAddress.addEventListener('blur', handleAddressBlur);
+    deliveryAddress.addEventListener('input', clearAddressError);
+    saveDeliveryBtn.addEventListener('click', saveDelivery);
+    cancelDeliveryBtn.addEventListener('click', () => closeModal(deliveryModal));
+
+    // Результаты маршрута
+    openYandexMapsBtn.addEventListener('click', openRouteInYandexMaps);
+    copyRouteLinkBtn.addEventListener('click', copyRouteLink);
 }
 
-// Обработчик ввода адреса
-function handleAddressInput(event) {
-    const input = event.target;
-    const coordsId = getCoordinatesId(input.id);
-    const coordsDisplay = document.getElementById(coordsId);
-    const inputGroup = input.closest('.address-input-group');
-    
-    if (coordsDisplay) {
-        coordsDisplay.style.display = 'none';
-        coordsDisplay.textContent = '';
-        inputGroup.classList.remove('has-coordinates');
+// Работа с модальными окнами
+function openModal(modal) {
+    modal.style.display = 'block';
+}
+
+function closeModal(modal) {
+    modal.style.display = 'none';
+    if (modal === deliveryModal) {
+        clearDeliveryForm();
     }
 }
 
-// Обработчик потери фокуса (геокодирование)
-async function handleAddressBlur(event) {
-    const input = event.target;
-    const address = input.value.trim();
-    
+function openDeliveryModal() {
+    openModal(deliveryModal);
+}
+
+function clearDeliveryForm() {
+    deliveryAddress.value = '';
+    deliveryVolume.value = '1.0';
+    deliveryTime.value = '15';
+    addressCoordinates.textContent = '';
+    addressError.textContent = '';
+}
+
+// Геокодирование
+async function handleAddressBlur() {
+    const address = deliveryAddress.value.trim();
     if (!address) return;
-    
-    // Проверяем кэш
-    if (geocodedAddresses.has(address)) {
-        displayCoordinates(input, geocodedAddresses.get(address));
+
+    if (geocodedAddresses[address]) {
+        displayCoordinates(geocodedAddresses[address]);
         return;
     }
-    
-    // Показываем индикатор загрузки
-    showLoadingForInput(input, true);
-    
+
     try {
-        const response = await fetch('/api/geocode', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ address: address })
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            // Сохраняем в кэш и отображаем
-            geocodedAddresses.set(address, data);
-            displayCoordinates(input, data);
-        } else {
-            showErrorForInput(input, data.error);
-        }
+        showAddressLoading();
+        const coordinates = await geocodeAddress(address);
+        geocodedAddresses[address] = coordinates;
+        displayCoordinates(coordinates);
+        clearAddressError();
     } catch (error) {
-        showErrorForInput(input, 'Ошибка соединения с сервером');
-    } finally {
-        showLoadingForInput(input, false);
+        showAddressError('Не удалось найти координаты для данного адреса');
+        addressCoordinates.textContent = '';
     }
 }
 
-// Отображение координат
-function displayCoordinates(input, data) {
-    const coordsId = getCoordinatesId(input.id);
-    const coordsDisplay = document.getElementById(coordsId);
-    const inputGroup = input.closest('.address-input-group');
-    
-    if (coordsDisplay) {
-        coordsDisplay.textContent = `📍 ${data.latitude.toFixed(6)}, ${data.longitude.toFixed(6)}`;
-        coordsDisplay.style.display = 'block';
-        coordsDisplay.classList.add('visible');
-        inputGroup.classList.add('has-coordinates');
-    }
+function showAddressLoading() {
+    addressCoordinates.textContent = 'Поиск координат...';
+    addressCoordinates.style.color = '#718096';
 }
 
-// Показ ошибки для поля ввода
-function showErrorForInput(input, errorMessage) {
-    const coordsId = getCoordinatesId(input.id);
-    const coordsDisplay = document.getElementById(coordsId);
-    const inputGroup = input.closest('.address-input-group');
-    
-    if (coordsDisplay) {
-        coordsDisplay.textContent = `❌ ${errorMessage}`;
-        coordsDisplay.style.display = 'block';
-        coordsDisplay.style.color = '#dc3545';
-        inputGroup.classList.remove('has-coordinates');
-    }
+function displayCoordinates(coordinates) {
+    addressCoordinates.textContent = `📍 ${coordinates}`;
+    addressCoordinates.style.color = '#38a169';
 }
 
-// Показ индикатора загрузки
-function showLoadingForInput(input, show) {
-    const coordsId = getCoordinatesId(input.id);
-    const coordsDisplay = document.getElementById(coordsId);
-    
-    if (coordsDisplay) {
-        if (show) {
-            coordsDisplay.textContent = '🔄 Определение координат...';
-            coordsDisplay.style.display = 'block';
-            coordsDisplay.style.color = '#667eea';
-        } else {
-            coordsDisplay.style.color = '#666';
-        }
-    }
+function showAddressError(message) {
+    addressError.textContent = message;
 }
 
-// Получение ID элемента для отображения координат
-function getCoordinatesId(inputId) {
-    if (inputId === 'start-address') {
-        return 'start-coords';
-    }
-    return inputId.replace('address', 'coords');
+function clearAddressError() {
+    addressError.textContent = '';
 }
 
-// Добавление нового поля адреса
-function addAddress() {
-    addressCounter++;
-    const container = document.getElementById('additional-addresses');
-    
-    const newAddressGroup = document.createElement('div');
-    newAddressGroup.className = 'address-input-group fade-in';
-    newAddressGroup.innerHTML = `
-        <label for="address-${addressCounter}">Адрес ${addressCounter}:</label>
-        <input type="text" id="address-${addressCounter}" placeholder="Введите адрес">
-        <div class="coordinates-display" id="coords-${addressCounter}"></div>
-        <button type="button" class="remove-address" onclick="removeAddress(${addressCounter})">✕</button>
+async function geocodeAddress(address) {
+    const response = await fetch('/api/geocode', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ address }),
+    });
+
+    if (!response.ok) {
+        throw new Error('Ошибка геокодирования');
+    }
+
+    const data = await response.json();
+    return data.coordinates;
+}
+
+// Управление доставками
+function saveDelivery() {
+    const address = deliveryAddress.value.trim();
+    const volume = parseFloat(deliveryVolume.value);
+    const timeAtPoint = parseInt(deliveryTime.value);
+
+    if (!address || !geocodedAddresses[address]) {
+        showAddressError('Пожалуйста, введите корректный адрес и дождитесь получения координат');
+        return;
+    }
+
+    if (volume <= 0 || timeAtPoint <= 0) {
+        showAddressError('Объем и время должны быть больше нуля');
+        return;
+    }
+
+    const delivery = {
+        id: nextDeliveryId++,
+        address: address,
+        coordinates: geocodedAddresses[address],
+        status: 'pending',
+        volume: volume,
+        timeAtPoint: timeAtPoint,
+        routeId: null
+    };
+
+    deliveries.push(delivery);
+    renderDeliveriesTable();
+    closeModal(deliveryModal);
+    updateUI();
+}
+
+function renderDeliveriesTable() {
+    deliveriesTbody.innerHTML = '';
+
+    deliveries.forEach(delivery => {
+        const row = createDeliveryRow(delivery);
+        deliveriesTbody.appendChild(row);
+    });
+}
+
+function createDeliveryRow(delivery) {
+    const row = document.createElement('tr');
+    row.dataset.deliveryId = delivery.id;
+
+    const statusBadge = getStatusBadge(delivery.status);
+    const routeCell = delivery.routeId 
+        ? `<a href="#" class="route-link" onclick="openRouteInYandexMaps('${delivery.routeId}')" data-route="${delivery.routeId}">№${delivery.routeId}</a>` 
+        : '';
+
+    row.innerHTML = `
+        <td>
+            <input type="checkbox" class="delivery-checkbox" onchange="updateSelectionState()">
+        </td>
+        <td class="delivery-number">${delivery.id}</td>
+        <td title="${delivery.address}">${truncateText(delivery.address, 40)}</td>
+        <td class="coordinates-display">${delivery.coordinates}</td>
+        <td>${statusBadge}</td>
+        <td>${delivery.volume} м³</td>
+        <td>${delivery.timeAtPoint} мин</td>
+        <td>${routeCell}</td>
     `;
-    
-    container.appendChild(newAddressGroup);
-    
-    // Настраиваем слушатели для нового поля
-    const newInput = newAddressGroup.querySelector('input');
-    newInput.addEventListener('blur', handleAddressBlur);
-    newInput.addEventListener('input', handleAddressInput);
-    
-    // Фокусируемся на новом поле
-    newInput.focus();
-    
-    checkFormReadiness();
+
+    return row;
 }
 
-// Удаление поля адреса
-function removeAddress(addressNumber) {
-    const addressGroup = document.querySelector(`#address-${addressNumber}`).closest('.address-input-group');
-    addressGroup.remove();
-    checkFormReadiness();
+function getStatusBadge(status) {
+    const statusLabels = {
+        'pending': 'Ожидает',
+        'ready': 'Готов',
+        'in-route': 'В пути',
+        'delivered': 'Доставлен'
+    };
+
+    return `<span class="status-badge status-${status}">${statusLabels[status]}</span>`;
 }
 
-// Проверка готовности формы
-function checkFormReadiness() {
-    const inputs = document.querySelectorAll('input[type="text"]');
-    const filledInputs = Array.from(inputs).filter(input => input.value.trim() !== '');
-    const optimizeBtn = document.getElementById('optimize-btn');
-    
-    // Нужно минимум 2 заполненных адреса (начальный + 1)
-    if (filledInputs.length >= 2) {
-        optimizeBtn.disabled = false;
-    } else {
-        optimizeBtn.disabled = true;
-    }
+function truncateText(text, maxLength) {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
 }
 
-// Основная функция оптимизации маршрута
-async function optimizeRoute() {
-    const inputs = document.querySelectorAll('input[type="text"]');
-    const addresses = [];
-    const coordinates = [];
+// Управление выбором
+function toggleSelectAll() {
+    const checkboxes = document.querySelectorAll('.delivery-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAllCheckbox.checked;
+    });
+    updateSelectionState();
+}
+
+function updateSelectionState() {
+    const checkboxes = document.querySelectorAll('.delivery-checkbox');
+    const checkedBoxes = document.querySelectorAll('.delivery-checkbox:checked');
     
-    // Собираем данные
-    for (const input of inputs) {
-        const address = input.value.trim();
-        if (!address) continue;
-        
-        // Проверяем, есть ли координаты для этого адреса
-        if (!geocodedAddresses.has(address)) {
-            alert(`Пожалуйста, дождитесь определения координат для адреса: "${address}"`);
-            input.focus();
-            return;
-        }
-        
-        addresses.push(address);
-        coordinates.push(geocodedAddresses.get(address).coordinates);
-    }
-    
-    if (addresses.length < 2) {
-        alert('Необходимо заполнить минимум 2 адреса');
-        return;
-    }
-    
-    // Показываем секцию результатов с лоадером
-    const resultSection = document.getElementById('result-section');
-    const loader = document.getElementById('loader');
-    const results = document.getElementById('results');
-    const error = document.getElementById('error');
-    
-    resultSection.style.display = 'block';
-    loader.style.display = 'block';
-    results.style.display = 'none';
-    error.style.display = 'none';
-    
-    // Скроллим к результатам
-    resultSection.scrollIntoView({ behavior: 'smooth' });
-    
-    try {
-        const response = await fetch('/api/optimize-route', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                addresses: addresses,
-                coordinates: coordinates
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            showResults(data);
+    // Обновляем состояние "Выбрать все"
+    selectAllCheckbox.indeterminate = checkedBoxes.length > 0 && checkedBoxes.length < checkboxes.length;
+    selectAllCheckbox.checked = checkedBoxes.length === checkboxes.length && checkboxes.length > 0;
+
+    // Обновляем счетчик
+    selectedCount.textContent = `Выбрано: ${checkedBoxes.length} доставок`;
+
+    // Управляем доступностью кнопки оптимизации
+    optimizeRouteBtn.disabled = checkedBoxes.length < 2;
+
+    // Выделяем выбранные строки
+    checkboxes.forEach(checkbox => {
+        const row = checkbox.closest('tr');
+        if (checkbox.checked) {
+            row.classList.add('selected');
         } else {
-            showError(data.error);
-        }
-    } catch (error) {
-        showError('Ошибка соединения с сервером');
-    }
-}
-
-// Отображение результатов
-function showResults(result) {
-    const loader = document.getElementById('loader');
-    const results = document.getElementById('results');
-    
-    loader.style.display = 'none';
-    results.style.display = 'block';
-    results.classList.add('fade-in');
-    
-    // Отображаем маршрут
-    const routeContainer = document.getElementById('route-steps');
-    routeContainer.innerHTML = '';
-    
-    result.orderedAddresses.forEach((address, index) => {
-        const tag = document.createElement('div');
-        tag.className = 'address-tag';
-        tag.textContent = address;
-        routeContainer.appendChild(tag);
-        
-        if (index < result.orderedAddresses.length - 1) {
-            const arrow = document.createElement('div');
-            arrow.className = 'arrow';
-            arrow.textContent = '↓';
-            routeContainer.appendChild(arrow);
+            row.classList.remove('selected');
         }
     });
-    
-    // Отображаем информацию о маршруте
-    document.getElementById('total-distance').textContent = 'Общее расстояние: ' + result.totalDistance.text;
-    document.getElementById('total-duration').textContent = 'Общее время в пути: ' + result.totalDuration.text;
-    
-    // Настраиваем кнопки
-    const openLinkBtn = document.getElementById('open-link-btn');
-    const copyLinkBtn = document.getElementById('copy-link-btn');
-    
-    openLinkBtn.href = result.yandexMapsUrl;
-    copyLinkBtn.onclick = () => copyToClipboard(result.yandexMapsUrl);
 }
 
-// Отображение ошибки
-function showError(errorMessage) {
-    const loader = document.getElementById('loader');
-    const error = document.getElementById('error');
-    
-    loader.style.display = 'none';
-    error.style.display = 'block';
-    error.textContent = 'Произошла ошибка: ' + errorMessage;
+function updateUI() {
+    updateSelectionState();
 }
 
-// Копирование ссылки в буфер обмена
-async function copyToClipboard(text) {
-    try {
-        await navigator.clipboard.writeText(text);
-        
-        const status = document.getElementById('copy-status');
-        status.textContent = 'Ссылка скопирована!';
-        status.classList.add('visible');
-        
-        setTimeout(() => {
-            status.classList.remove('visible');
-        }, 2000);
-    } catch (err) {
-        console.error('Не удалось скопировать текст: ', err);
-        
-        const status = document.getElementById('copy-status');
-        status.textContent = 'Не удалось скопировать. Попробуйте вручную.';
-        status.style.color = '#dc3545';
-        status.classList.add('visible');
-        
-        setTimeout(() => {
-            status.classList.remove('visible');
-            status.style.color = '#28a745';
-        }, 3000);
+// Оптимизация маршрута
+async function optimizeSelectedRoute() {
+    const checkedBoxes = document.querySelectorAll('.delivery-checkbox:checked');
+    const selectedDeliveries = Array.from(checkedBoxes).map(checkbox => {
+        const deliveryId = parseInt(checkbox.closest('tr').dataset.deliveryId);
+        return deliveries.find(d => d.id === deliveryId);
+    });
+
+    if (selectedDeliveries.length < 2) {
+        alert('Выберите минимум 2 доставки для построения маршрута');
+        return;
     }
-} 
+
+    try {
+        showLoader('Оптимизация маршрута...');
+
+        const routeData = await optimizeRoute(selectedDeliveries);
+        const routeId = nextRouteId++;
+
+        // Обновляем доставки с номером маршрута
+        selectedDeliveries.forEach(delivery => {
+            delivery.routeId = routeId;
+            delivery.status = 'ready';
+        });
+
+        // Сохраняем данные маршрута
+        currentRouteData = {
+            ...routeData,
+            routeId: routeId,
+            deliveries: selectedDeliveries
+        };
+
+        hideLoader();
+        renderDeliveriesTable();
+        showRouteResults(currentRouteData);
+        updateUI();
+
+    } catch (error) {
+        hideLoader();
+        showRouteError('Ошибка при построении маршрута: ' + error.message);
+    }
+}
+
+async function optimizeRoute(selectedDeliveries) {
+    const addresses = selectedDeliveries.map(d => d.address);
+    const coordinates = selectedDeliveries.map(d => d.coordinates);
+
+    const response = await fetch('/api/optimize-route', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ addresses, coordinates }),
+    });
+
+    if (!response.ok) {
+        throw new Error('Ошибка сервера при оптимизации маршрута');
+    }
+
+    return await response.json();
+}
+
+function showRouteResults(routeData) {
+    routeNumber.textContent = `№${routeData.routeId}`;
+    deliveriesCount.textContent = routeData.deliveries.length;
+    totalDistance.textContent = routeData.totalDistance.text;
+    totalDuration.textContent = routeData.totalDuration.text;
+
+    // Отображаем шаги маршрута
+    routeStepsList.innerHTML = '';
+    routeData.orderedAddresses.forEach((address, index) => {
+        const step = document.createElement('div');
+        step.className = 'route-step';
+        step.textContent = `${index + 1}. ${address}`;
+        routeStepsList.appendChild(step);
+    });
+
+    routeError.textContent = '';
+    openModal(routeModal);
+}
+
+function showRouteError(message) {
+    routeError.textContent = message;
+    openModal(routeModal);
+}
+
+// Работа с Яндекс.Картами
+function openRouteInYandexMaps(routeId) {
+    if (routeId && typeof routeId === 'string') {
+        // Клик по номеру маршрута в таблице
+        const route = findRouteById(routeId);
+        if (route && route.yandexMapsUrl) {
+            window.open(route.yandexMapsUrl, '_blank');
+        }
+    } else {
+        // Клик из модального окна результатов
+        if (currentRouteData && currentRouteData.yandexMapsUrl) {
+            window.open(currentRouteData.yandexMapsUrl, '_blank');
+        }
+    }
+}
+
+function copyRouteLink() {
+    if (currentRouteData && currentRouteData.yandexMapsUrl) {
+        navigator.clipboard.writeText(currentRouteData.yandexMapsUrl).then(() => {
+            copyRouteLinkBtn.textContent = '✓ Скопировано!';
+            setTimeout(() => {
+                copyRouteLinkBtn.innerHTML = '📋 Копировать ссылку';
+            }, 2000);
+        }).catch(() => {
+            alert('Не удалось скопировать ссылку');
+        });
+    }
+}
+
+function findRouteById(routeId) {
+    // В реальном приложении здесь был бы поиск в базе данных
+    // Пока что возвращаем текущий маршрут, если ID совпадает
+    if (currentRouteData && currentRouteData.routeId == routeId) {
+        return currentRouteData;
+    }
+    return null;
+}
+
+// Вспомогательные функции
+function showLoader(message = 'Загрузка...') {
+    loader.querySelector('p').textContent = message;
+    loader.classList.remove('hidden');
+}
+
+function hideLoader() {
+    loader.classList.add('hidden');
+}
+
+// Сохранение состояния (можно будет расширить для работы с LocalStorage или сервером)
+function saveState() {
+    localStorage.setItem('deliveries', JSON.stringify(deliveries));
+    localStorage.setItem('nextDeliveryId', nextDeliveryId.toString());
+    localStorage.setItem('nextRouteId', nextRouteId.toString());
+}
+
+function loadState() {
+    try {
+        const savedDeliveries = localStorage.getItem('deliveries');
+        const savedDeliveryId = localStorage.getItem('nextDeliveryId');
+        const savedRouteId = localStorage.getItem('nextRouteId');
+
+        if (savedDeliveries) {
+            deliveries = JSON.parse(savedDeliveries);
+        }
+        if (savedDeliveryId) {
+            nextDeliveryId = parseInt(savedDeliveryId);
+        }
+        if (savedRouteId) {
+            nextRouteId = parseInt(savedRouteId);
+        }
+
+        renderDeliveriesTable();
+        updateUI();
+    } catch (error) {
+        console.error('Ошибка при загрузке сохраненного состояния:', error);
+    }
+}
+
+// Автосохранение при изменениях
+function autoSave() {
+    saveState();
+}
+
+// Загрузка состояния при инициализации
+document.addEventListener('DOMContentLoaded', function() {
+    loadState();
+}); 

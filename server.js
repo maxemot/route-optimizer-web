@@ -20,44 +20,54 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// API endpoint для геокодирования адреса
+// API endpoint для геокодирования
 app.post('/api/geocode', async (req, res) => {
-  try {
-    const { address } = req.body;
-    
-    if (!address) {
-      return res.status(400).json({ error: 'Адрес не указан' });
+    try {
+        const { address } = req.body;
+        
+        if (!address) {
+            return res.status(400).json({ error: 'Адрес не предоставлен' });
+        }
+
+        console.log(`🗺️ Геокодирование адреса: "${address}"`);
+
+        const params = new URLSearchParams({
+            apikey: YANDEX_API_KEY,
+            geocode: address,
+            format: 'json',
+            results: 1
+        });
+
+        const response = await fetch(`${GEOCODER_URL}?${params}`, {
+            method: 'GET',
+            headers: {
+                'User-Agent': 'RouteOptimizer/1.0'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Yandex API вернул статус: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        if (!data.response?.GeoObjectCollection?.featureMember?.length) {
+            return res.status(404).json({ error: 'Адрес не найден' });
+        }
+
+        const geoObject = data.response.GeoObjectCollection.featureMember[0].GeoObject;
+        const coordinates = geoObject.Point.pos; // "долгота широта"
+        
+        console.log(`✅ Координаты найдены: ${coordinates}`);
+
+        res.json({ 
+            coordinates: coordinates,
+            fullAddress: geoObject.metaDataProperty.GeocoderMetaData.text
+        });
+    } catch (error) {
+        console.error('❌ Ошибка геокодирования:', error);
+        res.status(500).json({ error: 'Ошибка при геокодировании адреса' });
     }
-
-    const params = new URLSearchParams({
-      'apikey': YANDEX_API_KEY,
-      'geocode': address,
-      'format': 'json',
-      'results': '1'
-    });
-
-    const response = await fetch(`${GEOCODER_URL}?${params}`);
-    const data = await response.json();
-
-    if (!response.ok || !data.response.GeoObjectCollection.featureMember.length) {
-      return res.status(404).json({ 
-        error: `Не удалось найти координаты для адреса: "${address}"` 
-      });
-    }
-
-    const point = data.response.GeoObjectCollection.featureMember[0].GeoObject.Point.pos;
-    const [lon, lat] = point.split(' ');
-    
-    res.json({ 
-      coordinates: point,
-      longitude: parseFloat(lon),
-      latitude: parseFloat(lat)
-    });
-
-  } catch (error) {
-    console.error('Ошибка геокодирования:', error);
-    res.status(500).json({ error: 'Внутренняя ошибка сервера' });
-  }
 });
 
 // API endpoint для расчета матрицы расстояний через Google Maps (будет эмулироваться)
@@ -83,45 +93,55 @@ app.post('/api/distance-matrix', async (req, res) => {
 
 // API endpoint для оптимизации маршрута
 app.post('/api/optimize-route', async (req, res) => {
-  try {
-    const { addresses, coordinates } = req.body;
-    
-    if (!addresses || !coordinates || addresses.length !== coordinates.length) {
-      return res.status(400).json({ error: 'Некорректные данные адресов или координат' });
+    try {
+        const { addresses, coordinates } = req.body;
+
+        if (!addresses || !coordinates || addresses.length !== coordinates.length || addresses.length < 2) {
+            return res.status(400).json({ 
+                error: 'Необходимо предоставить минимум 2 адреса с соответствующими координатами' 
+            });
+        }
+
+        console.log(`🚗 Оптимизация маршрута для ${addresses.length} точек:`);
+        addresses.forEach((addr, i) => console.log(`  ${i + 1}. ${addr} (${coordinates[i]})`));
+
+        // Рассчитываем матрицу расстояний (используем mock для демонстрации)
+        const distanceMatrix = await calculateMockDistanceMatrix(coordinates);
+        
+        // Решаем задачу коммивояжера
+        const solution = solveTsp(distanceMatrix.duration, distanceMatrix.distance);
+        
+        // Формируем упорядоченный список адресов
+        const startAddress = addresses[0];
+        const orderedAddresses = [startAddress];
+        
+        solution.path.forEach(index => {
+            orderedAddresses.push(addresses[index]);
+        });
+        orderedAddresses.push(startAddress); // Возвращаемся в начальную точку
+        
+        // Создаем ссылку на Яндекс.Карты
+        const yandexMapsUrl = 'https://yandex.ru/maps/?rtext=' + 
+            orderedAddresses.map(addr => encodeURIComponent(addr)).join('~') + 
+            '&rtt=auto';
+
+        const result = {
+            orderedAddresses,
+            totalDistance: formatDistance(solution.distance),
+            totalDuration: formatDuration(solution.duration),
+            yandexMapsUrl,
+            calculatedAt: new Date().toISOString()
+        };
+
+        console.log(`✅ Маршрут построен: ${result.totalDistance.text}, ${result.totalDuration.text}`);
+        
+        res.json(result);
+    } catch (error) {
+        console.error('❌ Ошибка при оптимизации маршрута:', error);
+        res.status(500).json({ 
+            error: 'Внутренняя ошибка сервера при оптимизации маршрута' 
+        });
     }
-
-    if (addresses.length < 2) {
-      return res.status(400).json({ error: 'Необходимо минимум 2 адреса' });
-    }
-
-    // Получаем матрицу расстояний
-    const matrixData = await calculateMockDistanceMatrix(coordinates);
-    
-    // Решаем задачу коммивояжера
-    const routeResult = solveTsp(matrixData.duration, matrixData.distance);
-    
-    // Формируем оптимальный порядок адресов
-    const startAddress = addresses[0];
-    const orderedAddresses = [startAddress];
-    routeResult.path.forEach(index => {
-      orderedAddresses.push(addresses[index]);
-    });
-    orderedAddresses.push(startAddress);
-    
-    const yandexMapsUrl = 'https://yandex.ru/maps/?rtext=' + 
-      orderedAddresses.map(encodeURIComponent).join('~') + '&rtt=auto';
-
-    res.json({
-      orderedAddresses,
-      totalDistance: formatDistance(routeResult.distance),
-      totalDuration: formatDuration(routeResult.duration),
-      yandexMapsUrl
-    });
-
-  } catch (error) {
-    console.error('Ошибка оптимизации маршрута:', error);
-    res.status(500).json({ error: 'Ошибка при оптимизации маршрута' });
-  }
 });
 
 // Функции для расчета маршрута (портированные из Google Apps Script)
