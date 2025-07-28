@@ -1,8 +1,6 @@
 // Глобальные переменные
-// let deliveries = []; // Удаляем, теперь данные на сервере
-// let nextDeliveryId = 1; // Удаляем, ID управляет сервер
 let geocodedAddresses = {};
-let socket; // Глобальная переменная для сокета
+// let socket; - убрано
 
 // DOM элементы
 const addDeliveryBtn = document.getElementById('add-delivery-btn');
@@ -53,108 +51,9 @@ document.addEventListener('DOMContentLoaded', function() {
     closeAllModals();
     initializeEventListeners();
     loadAndRenderDeliveries();
-    initializeWebSocket(); // Инициализируем WebSocket
+    // initializeWebSocket(); - убрано
     updateUI();
 });
-
-function initializeWebSocket() {
-    socket = io(); // Инициализируем глобальный сокет
-
-    socket.on('connect', () => {
-        console.log('✅ WebSocket-соединение установлено');
-    });
-
-    socket.on('new_delivery', (newDelivery) => {
-        console.log('📦 Получена новая доставка по WebSocket:', newDelivery);
-
-        // Проверяем, не отображена ли уже эта доставка
-        if (document.querySelector(`tr[data-delivery-id='${newDelivery.id}']`)) {
-            console.log(`Доставка #${newDelivery.id} уже есть в таблице.`);
-            return;
-        }
-
-        // Добавляем новую строку, если ее нет
-        const emptyStateRow = deliveriesTbody.querySelector('.empty-state');
-        if (emptyStateRow) {
-            emptyStateRow.parentElement.innerHTML = '';
-        }
-        const newRow = createDeliveryRow(newDelivery);
-        deliveriesTbody.appendChild(newRow);
-        updateUI();
-    });
-
-    socket.on('deliveries_deleted', (ids) => {
-        console.log(`🗑️ Получено событие на удаление доставок:`, ids);
-        ids.forEach(id => {
-            const row = document.querySelector(`tr[data-delivery-id='${id}']`);
-            if (row) {
-                row.remove();
-            }
-        });
-        updateUI(); // Обновляем счетчики и состояние кнопок
-    });
-    
-    socket.on('delete_error', (errorMessage) => {
-        console.error('Ошибка удаления:', errorMessage);
-        alert(errorMessage);
-    });
-
-    socket.on('disconnect', () => {
-        console.warn('❌ WebSocket-соединение разорвано');
-    });
-}
-
-
-async function loadAndRenderDeliveries() {
-    try {
-        showLoader('Загрузка доставок...');
-        const response = await fetch('/api/deliveries');
-        if (!response.ok) {
-            throw new Error('Не удалось загрузить данные');
-        }
-        const deliveries = await response.json();
-        renderDeliveriesTable(deliveries);
-        hideLoader();
-    } catch (error) {
-        console.error('Ошибка загрузки доставок:', error);
-        hideLoader();
-        alert('Не удалось загрузить список доставок. Попробуйте обновить страницу.');
-    }
-}
-
-function initializeEventListeners() {
-    // Кнопки управления
-    addDeliveryBtn.addEventListener('click', openDeliveryModal);
-    optimizeRouteBtn.addEventListener('click', optimizeSelectedRoute);
-    selectAllCheckbox.addEventListener('change', toggleSelectAll);
-    deleteDeliveriesBtn.addEventListener('click', handleDeleteSelected);
-
-    // Модальные окна
-    const closeButtons = document.querySelectorAll('.close');
-    closeButtons.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const modal = this.closest('.modal');
-            closeModal(modal);
-        });
-    });
-
-    // Закрытие модального окна по клику вне его
-    window.addEventListener('click', function(event) {
-        if (event.target.classList.contains('modal') && event.target.classList.contains('show')) {
-            closeModal(event.target);
-        }
-    });
-
-    // Форма добавления доставки
-    deliveryAddress.addEventListener('blur', handleAddressBlur);
-    deliveryAddress.addEventListener('input', clearAddressError);
-    saveDeliveryBtn.addEventListener('click', saveDelivery);
-    cancelDeliveryBtn.addEventListener('click', () => closeModal(deliveryModal));
-
-    // Результаты маршрута
-    openYandexMapsBtn.addEventListener('click', openRouteInYandexMaps);
-    copyRouteLinkBtn.addEventListener('click', copyRouteLink);
-}
 
 // Работа с модальными окнами
 function openModal(modal) {
@@ -273,13 +172,8 @@ async function saveDelivery() {
         
         const savedDelivery = await response.json(); // Получаем созданную доставку с ID
 
-        // Немедленно отрисовываем новую строку в таблице
-        const emptyStateRow = deliveriesTbody.querySelector('.empty-state');
-        if (emptyStateRow) {
-            emptyStateRow.parentElement.innerHTML = ''; // Убираем сообщение о пустой таблице
-        }
-        const newRow = createDeliveryRow(savedDelivery);
-        deliveriesTbody.appendChild(newRow);
+        // Временное решение: просто перезагружаем все доставки
+        await loadAndRenderDeliveries();
         
         hideLoader();
         closeModal(deliveryModal);
@@ -380,7 +274,7 @@ function updateSelectionState(deliveries) { // deliveries необязателе
 
     // Управляем доступностью кнопки оптимизации
     optimizeRouteBtn.disabled = checkedBoxes.length < 1;
-    deleteDeliveriesBtn.disabled = checkedBoxes.length === 0;
+    // deleteDeliveriesBtn.disabled = checkedBoxes.length === 0; // Удалено
 
     // Выделяем выбранные строки
     checkboxes.forEach(checkbox => {
@@ -395,26 +289,6 @@ function updateSelectionState(deliveries) { // deliveries необязателе
 
 function updateUI() {
     updateSelectionState();
-}
-
-async function handleDeleteSelected() {
-    const checkedBoxes = document.querySelectorAll('.delivery-checkbox:checked');
-    if (checkedBoxes.length === 0) {
-        return;
-    }
-    
-    if (!confirm(`Вы уверены, что хотите удалить ${checkedBoxes.length} доставок?`)) {
-        return;
-    }
-    
-    const idsToDelete = Array.from(checkedBoxes).map(cb => parseInt(cb.closest('tr').dataset.deliveryId));
-    
-    // Отправляем событие на сервер через существующий сокет
-    if (socket) {
-        socket.emit('delete_deliveries', idsToDelete);
-    } else {
-        alert('Ошибка: WebSocket-соединение не установлено. Попробуйте обновить страницу.');
-    }
 }
 
 // Оптимизация маршрута
