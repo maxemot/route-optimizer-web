@@ -208,7 +208,7 @@ header p {
 
 /* Модальные окна */
 .modal {
-    display: none !important; /* ВАЖНО: скрываем модальные окна по умолчанию */
+    display: none; /* ВАЖНО: скрываем модальные окна по умолчанию */
     position: fixed;
     z-index: 1000;
     left: 0;
@@ -220,7 +220,7 @@ header p {
 }
 
 .modal.show {
-    display: flex !important; /* Показываем модальное окно */
+    display: flex; /* Показываем модальное окно */
     align-items: center;
     justify-content: center;
 }
