@@ -38,8 +38,20 @@ const routeError = document.getElementById('route-error');
 
 let currentRouteData = null;
 
+// Функция для принудительного закрытия всех модальных окон
+function closeAllModals() {
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+        modal.classList.remove('show');
+        modal.style.display = 'none'; // Принудительно скрываем
+    });
+}
+
 // Инициализация
 document.addEventListener('DOMContentLoaded', function() {
+    // Принудительно закрываем все модальные окна при загрузке
+    closeAllModals();
+    
     initializeEventListeners();
     renderDeliveriesTable(); // Показываем пустую таблицу
     updateUI();
