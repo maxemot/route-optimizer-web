@@ -65,11 +65,17 @@ app.post('/api/routes', async (req, res) => {
             return res.status(400).json({ error: 'Не предоставлены ID доставок для создания маршрута' });
         }
 
+        // --- ИСПРАВЛЕНИЕ: Парсим строковые ID в числовые ---
+        const numericDeliveryIds = deliveryIds.map(id => parseId(id));
+        if (numericDeliveryIds.some(isNaN)) {
+            return res.status(400).json({ error: 'Некорректный формат ID доставки' });
+        }
+
         // 1. Генерируем новый номер маршрута (теперь это просто число)
         const routeId = await kv.incr('nextRouteId');
 
-        // 2. Сохраняем сам маршрут в отдельный список с числовым ID
-        const newRoute = { id: routeId, deliveryIds, orderedAddresses, totalDistance, totalDuration, yandexMapsUrl, createdAt: new Date().toISOString() };
+        // 2. Сохраняем сам маршрут в отдельный список с ЧИСЛОВЫМИ ID доставок
+        const newRoute = { id: routeId, deliveryIds: numericDeliveryIds, orderedAddresses, totalDistance, totalDuration, yandexMapsUrl, createdAt: new Date().toISOString() };
         const routes = await kv.get('routes') || [];
         await kv.set('routes', [...routes, newRoute]);
 
@@ -79,7 +85,8 @@ app.post('/api/routes', async (req, res) => {
         const allOtherDeliveries = [];
 
         deliveries.forEach(d => {
-            if (deliveryIds.includes(d.id)) {
+            // --- ИСПРАВЛЕНИЕ: Используем массив числовых ID для поиска ---
+            if (numericDeliveryIds.includes(d.id)) {
                 deliveriesToUpdate.push({ ...d, routeId: routeId, status: 'ready' });
             } else {
                 allOtherDeliveries.push(d);
@@ -95,7 +102,7 @@ app.post('/api/routes', async (req, res) => {
             routeId: d.routeId ? formatRouteId(d.routeId) : null
         }));
         io.emit('deliveries_updated', formattedDeliveriesToUpdate);
-        console.log(`🗺️ Создан новый маршрут #${routeId} для доставок: ${deliveryIds.join(', ')}`);
+        console.log(`🗺️ Создан новый маршрут #${routeId} для доставок: ${numericDeliveryIds.join(', ')}`);
 
         // Отдаем на фронт тоже отформатированный маршрут
         res.status(201).json({
