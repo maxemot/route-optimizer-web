@@ -43,7 +43,7 @@ function closeAllModals() {
     const modals = document.querySelectorAll('.modal');
     modals.forEach(modal => {
         modal.classList.remove('show');
-        modal.style.display = 'none'; // Принудительно скрываем
+        // modal.style.display = 'none'; // УДАЛЕНО: эта строка мешала открытию окон
     });
 }
 

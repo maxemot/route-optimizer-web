@@ -28,7 +28,7 @@ app.get('/readme', (req, res) => {
 // API endpoint для получения времени релиза
 app.get('/api/release-time', (req, res) => {
   // Фиксированное время релиза для текущей версии
-  const releaseTime = "2025-07-28T06:25:00.000Z"; // Примерно 09:25 МСК
+  const releaseTime = "2025-07-28T06:14:00.000Z"; // Время последнего удачного деплоя
   
   // Форматируем в нужный формат (используем UTC, т.к. сервер Vercel в UTC)
   const date = new Date(releaseTime);
