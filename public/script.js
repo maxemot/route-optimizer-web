@@ -88,9 +88,9 @@ function initializeWebSocket() {
         updatedDeliveries.forEach(delivery => {
             const row = document.querySelector(`tr[data-delivery-id='${delivery.id}']`);
             if (row) {
-                // Обновляем только нужные ячейки, чтобы не перерисовывать всю строку
-                row.querySelector('td:nth-child(5)').innerHTML = getStatusBadge(delivery.status);
-                row.querySelector('td:nth-child(8)').innerHTML = createRouteLink(delivery.routeId);
+                // Заменяем всю строку целиком, чтобы обновить все данные и обработчики
+                const newRow = createDeliveryRow(delivery);
+                row.parentNode.replaceChild(newRow, row);
             }
         });
         updateUI();
@@ -332,7 +332,7 @@ function createDeliveryRow(delivery) {
 
     const statusBadge = getStatusBadge(delivery.status);
     const routeCell = delivery.routeId
-        ? `<a href="#" class="route-link" onclick="openRouteFromLink(event)" data-route="${delivery.routeId}">№${delivery.routeId}</a>`
+        ? `<a href="#" class="route-link" onclick="openRouteFromLink(event)" data-route="${delivery.routeId}">${delivery.routeId}</a>`
         : '';
 
     row.innerHTML = `
