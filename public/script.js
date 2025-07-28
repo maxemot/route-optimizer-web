@@ -2,6 +2,7 @@
 // let deliveries = []; // Удаляем, теперь данные на сервере
 // let nextDeliveryId = 1; // Удаляем, ID управляет сервер
 let geocodedAddresses = {};
+let socket = null; // Создаем глобальную переменную для сокета
 
 // DOM элементы
 const addDeliveryBtn = document.getElementById('add-delivery-btn');
@@ -57,7 +58,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initializeWebSocket() {
-    const socket = io();
+    socket = io(); // Инициализируем сокет один раз
 
     socket.on('connect', () => {
         console.log('✅ WebSocket-соединение установлено');
@@ -408,9 +409,13 @@ async function handleDeleteSelected() {
     
     const idsToDelete = Array.from(checkedBoxes).map(cb => parseInt(cb.closest('tr').dataset.deliveryId));
     
-    // Отправляем событие на сервер через WebSocket
-    const socket = io();
-    socket.emit('delete_deliveries', idsToDelete);
+    // Используем существующее соединение для отправки события
+    if (socket) {
+        socket.emit('delete_deliveries', idsToDelete);
+    } else {
+        console.error('Сокет не инициализирован.');
+        alert('Не удалось подключиться к серверу для удаления. Пожалуйста, обновите страницу.');
+    }
 }
 
 // Оптимизация маршрута
