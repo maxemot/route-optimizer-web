@@ -1,7 +1,6 @@
 // Глобальные переменные
-let deliveries = [];
-let nextDeliveryId = 1;
-let nextRouteId = 1;
+// let deliveries = []; // Удаляем, теперь данные на сервере
+// let nextDeliveryId = 1; // Удаляем, ID управляет сервер
 let geocodedAddresses = {};
 
 // DOM элементы
@@ -49,14 +48,50 @@ function closeAllModals() {
 
 // Инициализация
 document.addEventListener('DOMContentLoaded', function() {
-    // Принудительно закрываем все модальные окна при загрузке
     closeAllModals();
-    
     initializeEventListeners();
-    renderDeliveriesTable(); // Показываем пустую таблицу
+    loadAndRenderDeliveries();
+    initializeWebSocket(); // Инициализируем WebSocket
     updateUI();
-    // НЕ загружаем данные автоматически - пустая таблица при старте
 });
+
+function initializeWebSocket() {
+    const socket = io();
+
+    socket.on('connect', () => {
+        console.log('✅ WebSocket-соединение установлено');
+    });
+
+    socket.on('new_delivery', (newDelivery) => {
+        console.log('📦 Получена новая доставка по WebSocket:', newDelivery);
+        // Просто перезагружаем все доставки.
+        // Это самый простой способ, более сложная логика (добавление одной строки)
+        // может привести к рассинхрону.
+        loadAndRenderDeliveries();
+    });
+
+    socket.on('disconnect', () => {
+        console.warn('❌ WebSocket-соединение разорвано');
+    });
+}
+
+
+async function loadAndRenderDeliveries() {
+    try {
+        showLoader('Загрузка доставок...');
+        const response = await fetch('/api/deliveries');
+        if (!response.ok) {
+            throw new Error('Не удалось загрузить данные');
+        }
+        const deliveries = await response.json();
+        renderDeliveriesTable(deliveries);
+        hideLoader();
+    } catch (error) {
+        console.error('Ошибка загрузки доставок:', error);
+        hideLoader();
+        alert('Не удалось загрузить список доставок. Попробуйте обновить страницу.');
+    }
+}
 
 function initializeEventListeners() {
     // Кнопки управления
@@ -174,7 +209,7 @@ async function geocodeAddress(address) {
 }
 
 // Управление доставками
-function saveDelivery() {
+async function saveDelivery() {
     const address = deliveryAddress.value.trim();
     const volume = parseFloat(deliveryVolume.value);
     const timeAtPoint = parseInt(deliveryTime.value);
@@ -189,8 +224,8 @@ function saveDelivery() {
         return;
     }
 
-    const delivery = {
-        id: nextDeliveryId++,
+    const newDeliveryData = {
+        // id будет присвоен сервером
         address: address,
         coordinates: geocodedAddresses[address],
         status: 'pending',
@@ -199,16 +234,37 @@ function saveDelivery() {
         routeId: null
     };
 
-    deliveries.push(delivery);
-    renderDeliveriesTable();
-    closeModal(deliveryModal);
-    updateUI();
+    try {
+        showLoader('Сохранение...');
+        const response = await fetch('/api/deliveries', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newDeliveryData),
+        });
+
+        if (!response.ok) {
+            throw new Error('Ошибка при сохранении доставки на сервере');
+        }
+
+        // Теперь нам не нужно перезагружать данные здесь,
+        // так как сервер пришлет обновление по WebSocket всем клиентам (включая нас).
+        // await loadAndRenderDeliveries(); // Удаляем
+
+        hideLoader();
+        closeModal(deliveryModal);
+        updateUI();
+
+    } catch (error) {
+        console.error('Ошибка сохранения:', error);
+        hideLoader();
+        alert(error.message);
+    }
 }
 
-function renderDeliveriesTable() {
+function renderDeliveriesTable(deliveries) {
     deliveriesTbody.innerHTML = '';
 
-    if (deliveries.length === 0) {
+    if (!deliveries || deliveries.length === 0) {
         // Показываем пустое состояние
         const emptyRow = document.createElement('tr');
         emptyRow.innerHTML = `
@@ -226,6 +282,8 @@ function renderDeliveriesTable() {
         const row = createDeliveryRow(delivery);
         deliveriesTbody.appendChild(row);
     });
+    // После отрисовки обновляем состояние кнопок и чекбоксов
+    updateSelectionState(deliveries);
 }
 
 function createDeliveryRow(delivery) {
@@ -233,13 +291,13 @@ function createDeliveryRow(delivery) {
     row.dataset.deliveryId = delivery.id;
 
     const statusBadge = getStatusBadge(delivery.status);
-    const routeCell = delivery.routeId 
-        ? `<a href="#" class="route-link" onclick="openRouteInYandexMaps('${delivery.routeId}')" data-route="${delivery.routeId}">№${delivery.routeId}</a>` 
+    const routeCell = delivery.routeId
+        ? `<a href="#" class="route-link" onclick="openRouteInYandexMaps('${delivery.routeId}')" data-route="${delivery.routeId}">№${delivery.routeId}</a>`
         : '';
 
     row.innerHTML = `
         <td>
-            <input type="checkbox" class="delivery-checkbox" onchange="updateSelectionState()">
+            <input type="checkbox" class="delivery-checkbox" data-delivery-id="${delivery.id}" onchange="updateSelectionState()">
         </td>
         <td class="delivery-number">${delivery.id}</td>
         <td title="${delivery.address}">${truncateText(delivery.address, 40)}</td>
@@ -278,10 +336,10 @@ function toggleSelectAll() {
     updateSelectionState();
 }
 
-function updateSelectionState() {
+function updateSelectionState(deliveries) { // deliveries необязателен, но может пригодиться
     const checkboxes = document.querySelectorAll('.delivery-checkbox');
     const checkedBoxes = document.querySelectorAll('.delivery-checkbox:checked');
-    
+
     // Обновляем состояние "Выбрать все"
     selectAllCheckbox.indeterminate = checkedBoxes.length > 0 && checkedBoxes.length < checkboxes.length;
     selectAllCheckbox.checked = checkedBoxes.length === checkboxes.length && checkboxes.length > 0;
@@ -310,13 +368,18 @@ function updateUI() {
 // Оптимизация маршрута
 async function optimizeSelectedRoute() {
     const checkedBoxes = document.querySelectorAll('.delivery-checkbox:checked');
-    const selectedDeliveries = Array.from(checkedBoxes).map(checkbox => {
-        const deliveryId = parseInt(checkbox.closest('tr').dataset.deliveryId);
-        return deliveries.find(d => d.id === deliveryId);
-    });
 
-    if (selectedDeliveries.length < 2) {
-        alert('Выберите минимум 2 доставки для построения маршрута');
+    // Получаем все доставки с сервера, чтобы иметь актуальные данные
+    const response = await fetch('/api/deliveries');
+    const deliveries = await response.json();
+
+    const selectedDeliveries = Array.from(checkedBoxes).map(checkbox => {
+        const deliveryId = parseInt(checkbox.dataset.deliveryId);
+        return deliveries.find(d => d.id === deliveryId);
+    }).filter(d => d); // Отфильтровываем возможные null
+
+    if (selectedDeliveries.length < 1) { // Теперь достаточно одной
+        alert('Выберите минимум 1 доставку для построения маршрута');
         return;
     }
 
@@ -324,15 +387,14 @@ async function optimizeSelectedRoute() {
         showLoader('Оптимизация маршрута...');
 
         const routeData = await optimizeRoute(selectedDeliveries);
-        const routeId = nextRouteId++;
 
-        // Обновляем доставки с номером маршрута
+        // TODO: Логику обновления статусов нужно будет переделать, когда она переедет на сервер
+        const routeId = nextRouteId++;
         selectedDeliveries.forEach(delivery => {
             delivery.routeId = routeId;
             delivery.status = 'ready';
         });
 
-        // Сохраняем данные маршрута
         currentRouteData = {
             ...routeData,
             routeId: routeId,
@@ -340,7 +402,9 @@ async function optimizeSelectedRoute() {
         };
 
         hideLoader();
-        renderDeliveriesTable();
+        // После построения маршрута нужно будет обновить таблицу, чтобы показать номера маршрутов
+        // Это будет сделано в рамках задачи по real-time обновлениям
+        // loadAndRenderDeliveries();
         showRouteResults(currentRouteData);
         updateUI();
 

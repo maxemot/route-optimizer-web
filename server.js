@@ -2,8 +2,18 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fetch = require('node-fetch');
+const { kv } = require('@vercel/kv');
+const http = require('http');
+const { Server } = require("socket.io");
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: {
+        origin: "*", // Для простоты разрешаем все источники
+        methods: ["GET", "POST"]
+    }
+});
 
 // Конфигурация
 const YANDEX_API_KEY = process.env.YANDEX_API_KEY || "7726ddb0-76da-4747-8007-d84dfe2fb93f";
@@ -15,6 +25,14 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
+// Socket.io connection
+io.on('connection', (socket) => {
+    console.log('🔌 Клиент подключен по WebSocket');
+    socket.on('disconnect', () => {
+        console.log('🔌 Клиент отключен');
+    });
+});
+
 // Основная страница
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -25,10 +43,55 @@ app.get('/readme', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'readme.html'));
 });
 
+// API для Доставок
+
+// Получить все доставки
+app.get('/api/deliveries', async (req, res) => {
+    try {
+        const deliveries = await kv.get('deliveries');
+        res.json(deliveries || []);
+    } catch (error) {
+        console.error('Ошибка получения доставок из KV:', error);
+        res.status(500).json({ error: 'Не удалось получить доставки' });
+    }
+});
+
+// Добавить новую доставку
+app.post('/api/deliveries', async (req, res) => {
+    try {
+        const newDelivery = req.body;
+        if (!newDelivery || !newDelivery.address || !newDelivery.coordinates) {
+            return res.status(400).json({ error: 'Некорректные данные для доставки' });
+        }
+
+        const deliveries = await kv.get('deliveries') || [];
+        
+        const nextId = (await kv.get('nextDeliveryId')) || 1;
+        newDelivery.id = nextId;
+        
+        const updatedDeliveries = [...deliveries, newDelivery];
+        
+        await kv.set('deliveries', updatedDeliveries);
+        await kv.set('nextDeliveryId', nextId + 1);
+
+        console.log(`📦 Добавлена новая доставка: #${newDelivery.id} ${newDelivery.address}`);
+        
+        // Оповещаем всех подключенных клиентов о новой доставке
+        io.emit('new_delivery', newDelivery);
+
+        res.status(201).json(newDelivery);
+
+    } catch (error) {
+        console.error('Ошибка сохранения доставки в KV:', error);
+        res.status(500).json({ error: 'Не удалось сохранить доставку' });
+    }
+});
+
+
 // API endpoint для получения времени релиза
 app.get('/api/release-time', (req, res) => {
   // Фиксированное время релиза для текущей версии
-  const releaseTime = "2025-07-28T06:14:00.000Z"; // Время последнего удачного деплоя
+  const releaseTime = "2025-07-28T06:29:03.000Z"; // Время последнего удачного деплоя
   
   // Форматируем в нужный формат (используем UTC, т.к. сервер Vercel в UTC)
   const date = new Date(releaseTime);
@@ -120,16 +183,26 @@ app.post('/api/distance-matrix', async (req, res) => {
 // API endpoint для оптимизации маршрута
 app.post('/api/optimize-route', async (req, res) => {
     try {
-        const { addresses, coordinates } = req.body;
+        let { addresses, coordinates } = req.body;
 
-        if (!addresses || !coordinates || addresses.length !== coordinates.length || addresses.length < 2) {
+        if (!addresses || !coordinates || addresses.length !== coordinates.length || addresses.length < 1) { // Теперь достаточно одной точки
             return res.status(400).json({ 
-                error: 'Необходимо предоставить минимум 2 адреса с соответствующими координатами' 
+                error: 'Необходимо предоставить минимум 1 адрес с соответствующими координатами' 
             });
         }
+        
+        // Добавляем фиксированную точку старта/финиша в начало
+        const startPoint = {
+            address: "Поповка, Московская обл., 141892",
+            coordinates: "37.298805 56.150459" // Долгота, Широта
+        };
+        
+        // Вставляем точку "Поповка" в начало массивов
+        addresses.unshift(startPoint.address);
+        coordinates.unshift(startPoint.coordinates);
 
-        console.log(`🚗 Оптимизация маршрута для ${addresses.length} точек:`);
-        addresses.forEach((addr, i) => console.log(`  ${i + 1}. ${addr} (${coordinates[i]})`));
+        console.log(`🚗 Оптимизация маршрута для ${addresses.length} точек (включая старт/финиш):`);
+        addresses.forEach((addr, i) => console.log(`  ${i}. ${addr} (${coordinates[i]})`));
 
         // Рассчитываем матрицу расстояний (используем mock для демонстрации)
         const distanceMatrix = await calculateMockDistanceMatrix(coordinates);
@@ -293,9 +366,9 @@ function formatDuration(seconds) {
 }
 
 // Запуск сервера
-app.listen(PORT, () => {
-  console.log(`Сервер запущен на порту ${PORT}`);
-  console.log(`Откройте http://localhost:${PORT} в браузере`);
+server.listen(PORT, () => {
+    console.log(`🚀 Сервер запущен на порту ${PORT}`);
+    console.log(`   Откройте http://localhost:${PORT} в браузере`);
 });
 
 module.exports = app; 
