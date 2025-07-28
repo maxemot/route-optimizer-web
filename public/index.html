@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>🚚 Система управления доставками</title>
-    <link rel="stylesheet" href="styles.css?v=19">
+    <link rel="stylesheet" href="styles.css?v=16">
 </head>
 <body>
     <div class="container">
@@ -24,9 +24,9 @@
             <button id="optimize-route-btn" class="btn btn-success" disabled>
                 🗺️ Построить маршрут
             </button>
-            <!-- <button id="delete-deliveries-btn" class="btn btn-danger" disabled>
+            <button id="delete-deliveries-btn" class="btn btn-danger" disabled>
                 🗑️ Удалить
-            </button> -->
+            </button>
             <span id="selected-count" class="selected-info">Выбрано: 0 доставок</span>
         </div>
 
@@ -138,7 +138,7 @@
         </div>
     </div>
 
-        <!-- <script src="/socket.io/socket.io.js"></script> - убрано -->
+        <script src="/socket.io/socket.io.js"></script>
         <script>
         // Отображаем дату и время релиза
         document.addEventListener('DOMContentLoaded', async function() {
@@ -161,6 +161,6 @@
             }
         });
     </script>
-    <script src="script.js?v=19"></script>
+    <script src="script.js?v=16"></script>
 </body>
 </html> 

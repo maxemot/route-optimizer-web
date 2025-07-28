@@ -3,8 +3,17 @@ const cors = require('cors');
 const path = require('path');
 const fetch = require('node-fetch');
 const { kv } = require('@vercel/kv');
+const http = require('http');
+const { Server } = require("socket.io");
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
+});
 
 const YANDEX_API_KEY = process.env.YANDEX_API_KEY || "7726ddb0-76da-4747-8007-d84dfe2fb93f";
 const GEOCODER_URL = "https://geocode-maps.yandex.ru/1.x/";
@@ -13,6 +22,28 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
+
+io.on('connection', (socket) => {
+    console.log('🔌 Клиент подключен по WebSocket');
+    
+    socket.on('delete_deliveries', async (ids) => {
+        try {
+            const deliveries = await kv.get('deliveries') || [];
+            const updatedDeliveries = deliveries.filter(d => !ids.includes(d.id));
+            await kv.set('deliveries', updatedDeliveries);
+
+            console.log(`🗑️ Удалены доставки с ID: ${ids.join(', ')}`);
+            io.emit('deliveries_deleted', ids);
+        } catch (error) {
+            console.error('Ошибка удаления доставок:', error);
+            socket.emit('delete_error', 'Не удалось удалить доставки на сервере');
+        }
+    });
+
+    socket.on('disconnect', () => {
+        console.log('🔌 Клиент отключен');
+    });
+});
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -47,6 +78,7 @@ app.post('/api/deliveries', async (req, res) => {
         await kv.set('deliveries', updatedDeliveries);
         await kv.set('nextDeliveryId', nextId + 1);
         
+        io.emit('new_delivery', newDelivery);
         res.status(201).json(newDelivery);
 
     } catch (error) {
@@ -55,7 +87,7 @@ app.post('/api/deliveries', async (req, res) => {
 });
 
 app.get('/api/release-time', (req, res) => {
-    const releaseTime = "2025-07-28T07:33:49.000Z";
+    const releaseTime = "2025-07-28T07:36:49.000Z";
     const date = new Date(releaseTime);
     const mskDate = new Date(date.getTime() + (3 * 60 * 60 * 1000));
     const day = String(mskDate.getUTCDate()).padStart(2, '0');
@@ -200,5 +232,9 @@ function formatDuration(seconds) {
     if (minutes > 0) text += `${minutes} мин`;
     return { value: seconds, text: text.trim() || 'меньше минуты' };
 }
+
+server.listen(PORT, () => {
+    console.log(`🚀 Сервер запущен на порту ${PORT}`);
+});
 
 module.exports = app;
