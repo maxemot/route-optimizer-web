@@ -6,6 +6,11 @@ const { kv } = require('@vercel/kv');
 const http = require('http');
 const { Server } = require("socket.io");
 
+// +++ НОВЫЕ ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ +++
+const formatDeliveryId = (id) => `Д-${String(id).padStart(4, '0')}`;
+const formatRouteId = (id) => `М-${String(id).padStart(4, '0')}`;
+const parseId = (formattedId) => parseInt(formattedId.split('-')[1], 10);
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -30,12 +35,18 @@ io.on('connection', (socket) => {
     
     socket.on('delete_deliveries', async (ids) => {
         try {
+            // Парсим строковые ID ("Д-xxxx") в числовые
+            const numericIds = ids.map(id => parseId(id));
+            if (numericIds.some(isNaN)) {
+                throw new Error("Получены некорректные ID для удаления");
+            }
+
             const deliveries = await kv.get('deliveries') || [];
-            const updatedDeliveries = deliveries.filter(d => !ids.includes(d.id));
+            const updatedDeliveries = deliveries.filter(d => !numericIds.includes(d.id));
             await kv.set('deliveries', updatedDeliveries);
 
-            console.log(`🗑️ Удалены доставки с ID: ${ids.join(', ')}`);
-            io.emit('deliveries_deleted', ids);
+            console.log(`🗑️ Удалены доставки с ID: ${numericIds.join(', ')}`);
+            io.emit('deliveries_deleted', ids); // Обратно отправляем строковые ID, которые получил клиент
         } catch (error) {
             console.error('Ошибка удаления доставок:', error);
             socket.emit('delete_error', 'Не удалось удалить доставки на сервере');
@@ -54,16 +65,15 @@ app.post('/api/routes', async (req, res) => {
             return res.status(400).json({ error: 'Не предоставлены ID доставок для создания маршрута' });
         }
 
-        // 1. Генерируем новый номер маршрута
-        const routeCounter = await kv.incr('nextRouteId');
-        const routeId = `П-${String(routeCounter).padStart(4, '0')}`;
+        // 1. Генерируем новый номер маршрута (теперь это просто число)
+        const routeId = await kv.incr('nextRouteId');
 
-        // 2. Сохраняем сам маршрут в отдельный список
+        // 2. Сохраняем сам маршрут в отдельный список с числовым ID
         const newRoute = { id: routeId, deliveryIds, orderedAddresses, totalDistance, totalDuration, yandexMapsUrl, createdAt: new Date().toISOString() };
         const routes = await kv.get('routes') || [];
         await kv.set('routes', [...routes, newRoute]);
 
-        // 3. Обновляем доставки, добавляя им номер маршрута
+        // 3. Обновляем доставки, добавляя им числовой номер маршрута
         const deliveries = await kv.get('deliveries') || [];
         const deliveriesToUpdate = [];
         const allOtherDeliveries = [];
@@ -78,11 +88,20 @@ app.post('/api/routes', async (req, res) => {
 
         await kv.set('deliveries', [...allOtherDeliveries, ...deliveriesToUpdate]);
         
-        // 4. Оповещаем клиентов об обновлении
-        io.emit('deliveries_updated', deliveriesToUpdate);
-        console.log(`🗺️ Создан новый маршрут ${routeId} для доставок: ${deliveryIds.join(', ')}`);
+        // 4. Оповещаем клиентов, отправляя отформатированные данные
+        const formattedDeliveriesToUpdate = deliveriesToUpdate.map(d => ({
+            ...d,
+            id: formatDeliveryId(d.id),
+            routeId: d.routeId ? formatRouteId(d.routeId) : null
+        }));
+        io.emit('deliveries_updated', formattedDeliveriesToUpdate);
+        console.log(`🗺️ Создан новый маршрут #${routeId} для доставок: ${deliveryIds.join(', ')}`);
 
-        res.status(201).json(newRoute);
+        // Отдаем на фронт тоже отформатированный маршрут
+        res.status(201).json({
+            ...newRoute,
+            id: formatRouteId(newRoute.id)
+        });
     } catch (error) {
         console.error('Ошибка создания маршрута:', error);
         res.status(500).json({ error: 'Не удалось создать маршрут' });
@@ -91,12 +110,21 @@ app.post('/api/routes', async (req, res) => {
 
 app.get('/api/routes/:id', async (req, res) => {
     try {
-        const { id } = req.params;
+        const { id } = req.params; // Получаем отформатированный ID, например "М-0003"
+        const numericId = parseId(id); // Превращаем его в число 3
+        if (isNaN(numericId)) {
+            return res.status(400).json({ error: 'Некорректный формат ID маршрута' });
+        }
+
         const routes = await kv.get('routes') || [];
-        const route = routes.find(r => r.id === id);
+        const route = routes.find(r => r.id === numericId);
 
         if (route) {
-            res.json(route);
+            // Отправляем на фронт, форматируя ID обратно в строку
+            res.json({
+                ...route,
+                id: formatRouteId(route.id)
+            });
         } else {
             res.status(404).json({ error: 'Маршрут не найден' });
         }
@@ -117,8 +145,14 @@ app.get('/readme', (req, res) => {
 
 app.get('/api/deliveries', async (req, res) => {
     try {
-        const deliveries = await kv.get('deliveries');
-        res.json(deliveries || []);
+        const deliveries = await kv.get('deliveries') || [];
+        // Форматируем ID перед отправкой на клиент
+        const formattedDeliveries = deliveries.map(d => ({
+            ...d,
+            id: formatDeliveryId(d.id),
+            routeId: d.routeId ? formatRouteId(d.routeId) : null
+        }));
+        res.json(formattedDeliveries);
     } catch (error) {
         console.error('Ошибка получения доставок из KV:', error);
         res.status(500).json({ error: 'Не удалось получить доставки' });
@@ -142,8 +176,14 @@ app.post('/api/deliveries', async (req, res) => {
         await kv.set('nextDeliveryId', nextId + 1);
         
         console.log(`📦 Добавлена новая доставка: #${newDelivery.id} ${newDelivery.address}`);
-        io.emit('new_delivery', newDelivery);
-        res.status(201).json(newDelivery);
+        
+        // Форматируем ID перед отправкой по WebSocket
+        const formattedDelivery = {
+            ...newDelivery,
+            id: formatDeliveryId(newDelivery.id)
+        };
+        io.emit('new_delivery', formattedDelivery);
+        res.status(201).json(formattedDelivery);
 
     } catch (error) {
         console.error('Ошибка сохранения доставки в KV:', error);
@@ -193,16 +233,21 @@ app.post('/api/geocode', async (req, res) => {
 
 app.post('/api/optimize-route', async (req, res) => {
     try {
-        const { deliveryIds } = req.body;
+        const { deliveryIds } = req.body; // Получаем массив строковых ID ("Д-xxxx")
         if (!deliveryIds || deliveryIds.length < 1) {
             return res.status(400).json({ error: 'Необходимо предоставить минимум 1 адрес' });
         }
 
-        // Получаем все доставки и фильтруем нужные
-        const allDeliveries = await kv.get('deliveries') || [];
-        const selectedDeliveries = allDeliveries.filter(d => deliveryIds.includes(d.id));
+        const numericDeliveryIds = deliveryIds.map(id => parseId(id));
+        if (numericDeliveryIds.some(isNaN)) {
+            return res.status(400).json({ error: 'Некорректный формат ID доставки' });
+        }
 
-        if (selectedDeliveries.length !== deliveryIds.length) {
+        // Получаем все доставки и фильтруем нужные по числовым ID
+        const allDeliveries = await kv.get('deliveries') || [];
+        const selectedDeliveries = allDeliveries.filter(d => numericDeliveryIds.includes(d.id));
+
+        if (selectedDeliveries.length !== numericDeliveryIds.length) {
              return res.status(404).json({ error: 'Одна или несколько выбранных доставок не найдены в базе' });
         }
 
@@ -230,7 +275,8 @@ app.post('/api/optimize-route', async (req, res) => {
             totalDistance: formatDistance(solution.distance),
             totalDuration: formatDuration(solution.duration),
             yandexMapsUrl,
-            calculatedAt: new Date().toISOString()
+            calculatedAt: new Date().toISOString(),
+            deliveryIds: deliveryIds // Возвращаем исходные строковые ID
         };
 
         console.log(`✅ Маршрут построен: ${result.totalDistance.text}, ${result.totalDuration.text}`);

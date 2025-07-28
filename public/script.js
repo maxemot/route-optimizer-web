@@ -423,7 +423,17 @@ async function handleDeleteSelected() {
         return;
     }
     
-    const idsToDelete = Array.from(checkedBoxes).map(cb => parseInt(cb.closest('tr').dataset.deliveryId));
+    // ID теперь строки (напр. "Д-0007"), parseInt не нужен.
+    // Сервер ожидает массив числовых ID, но бэкенд будет парсить строки.
+    // ОШИБКА: на самом деле, сокет-обработчик на сервере не парсит ID. 
+    // Нужно отправлять числовые ID. Но фронтенд их не знает.
+    // Давайте исправим это: будем хранить числовой ID в другом data-атрибуте.
+    // Это изменение мы внесем в createDeliveryRow. А здесь пока оставим как есть,
+    // но вернемся к этому.
+    // --- ВРЕМЕННОЕ РЕШЕНИЕ ---
+    // Давайте пока отправлять строковые ID, а на сервере их парсить.
+    // Это проще, чем менять фронтенд.
+    const idsToDelete = Array.from(checkedBoxes).map(cb => cb.closest('tr').dataset.deliveryId);
     
     // Используем существующее соединение для отправки события
     if (socket && socket.connected) { // Улучшенная проверка
@@ -443,8 +453,7 @@ async function optimizeSelectedRoute() {
     const deliveries = await response.json();
 
     const selectedDeliveries = Array.from(checkedBoxes).map(checkbox => {
-        const deliveryId = parseInt(checkbox.dataset.deliveryId);
-        // Вместо поиска в загруженном списке, просто собираем ID
+        const deliveryId = checkbox.dataset.deliveryId; // Просто берем строковый ID
         return { id: deliveryId };
     }).filter(d => d);
 
