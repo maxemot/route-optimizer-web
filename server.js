@@ -40,6 +40,36 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('create_route', async (routeData) => {
+        try {
+            const nextRouteIdNum = (await kv.get('nextRouteId')) || 1;
+            const routeId = `П-${String(nextRouteIdNum).padStart(4, '0')}`;
+            
+            let deliveries = await kv.get('deliveries') || [];
+            const deliveryIdsInRoute = routeData.deliveryIds;
+
+            // Обновляем доставки, добавляя им номер маршрута
+            const deliveriesToUpdate = deliveries.map(d => {
+                if (deliveryIdsInRoute.includes(d.id)) {
+                    return { ...d, routeId: routeId, status: 'in-route' };
+                }
+                return d;
+            });
+
+            await kv.set('deliveries', deliveriesToUpdate);
+            await kv.set('nextRouteId', nextRouteIdNum + 1);
+
+            console.log(`🗺️ Создан новый маршрут: ${routeId}`);
+            
+            // Оповещаем всех об обновлении доставок
+            io.emit('deliveries_updated', deliveriesToUpdate);
+            
+        } catch (error) {
+            console.error('Ошибка создания маршрута:', error);
+            socket.emit('route_error', 'Не удалось создать маршрут на сервере');
+        }
+    });
+
     socket.on('disconnect', () => {
         console.log('🔌 Клиент отключен');
     });
@@ -87,7 +117,7 @@ app.post('/api/deliveries', async (req, res) => {
 });
 
 app.get('/api/release-time', (req, res) => {
-    const releaseTime = "2025-07-28T06:55:07.000Z";
+    const releaseTime = "2025-07-28T07:09:57.000Z";
     const date = new Date(releaseTime);
     const mskDate = new Date(date.getTime() + (3 * 60 * 60 * 1000));
     const day = String(mskDate.getUTCDate()).padStart(2, '0');

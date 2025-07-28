@@ -2,6 +2,7 @@
 // let deliveries = []; // Удаляем, теперь данные на сервере
 // let nextDeliveryId = 1; // Удаляем, ID управляет сервер
 let geocodedAddresses = {};
+const socket = io(); // Создаем один экземпляр сокета для всего приложения
 
 // DOM элементы
 const addDeliveryBtn = document.getElementById('add-delivery-btn');
@@ -33,7 +34,9 @@ const totalDistance = document.getElementById('total-distance');
 const totalDuration = document.getElementById('total-duration');
 const routeStepsList = document.getElementById('route-steps-list');
 const openYandexMapsBtn = document.getElementById('open-yandex-maps');
-const copyRouteLinkBtn = document.getElementById('copy-route-link');
+// copyRouteLinkBtn.addEventListener('click', copyRouteLink); // Удаляем
+const createRouteBtn = document.getElementById('create-route-btn');
+createRouteBtn.addEventListener('click', handleCreateRoute);
 const routeError = document.getElementById('route-error');
 
 let currentRouteData = null;
@@ -57,7 +60,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initializeWebSocket() {
-    const socket = io();
+    // const socket = io(); // Удаляем, используем глобальный экземпляр
 
     socket.on('connect', () => {
         console.log('✅ WebSocket-соединение установлено');
@@ -95,6 +98,16 @@ function initializeWebSocket() {
     
     socket.on('delete_error', (errorMessage) => {
         console.error('Ошибка удаления:', errorMessage);
+        alert(errorMessage);
+    });
+
+    socket.on('deliveries_updated', (updatedDeliveries) => {
+        console.log('🗺️ Получено обновление доставок по WebSocket:', updatedDeliveries);
+        renderDeliveriesTable(updatedDeliveries);
+    });
+    
+    socket.on('route_error', (errorMessage) => {
+        console.error('Ошибка создания маршрута:', errorMessage);
         alert(errorMessage);
     });
 
@@ -152,7 +165,11 @@ function initializeEventListeners() {
 
     // Результаты маршрута
     openYandexMapsBtn.addEventListener('click', openRouteInYandexMaps);
-    copyRouteLinkBtn.addEventListener('click', copyRouteLink);
+    // copyRouteLinkBtn.addEventListener('click', copyRouteLink); // Удаляем
+    const createRouteBtn = document.getElementById('create-route-btn');
+    createRouteBtn.addEventListener('click', handleCreateRoute);
+    routeError.textContent = '';
+    openModal(routeModal);
 }
 
 // Работа с модальными окнами
@@ -321,9 +338,9 @@ function createDeliveryRow(delivery) {
     row.dataset.deliveryId = delivery.id;
 
     const statusBadge = getStatusBadge(delivery.status);
-    const routeCell = delivery.routeId
-        ? `<a href="#" class="route-link" onclick="openRouteInYandexMaps('${delivery.routeId}')" data-route="${delivery.routeId}">№${delivery.routeId}</a>`
-        : '';
+    const routeCell = delivery.routeId 
+        ? `<a href="https://yandex.ru/maps/?rtext=${delivery.address}" target="_blank" class="route-link" data-route-id="${delivery.routeId}">№${delivery.routeId}</a>` 
+        : '—';
 
     row.innerHTML = `
         <td>
@@ -408,8 +425,8 @@ async function handleDeleteSelected() {
     
     const idsToDelete = Array.from(checkedBoxes).map(cb => parseInt(cb.closest('tr').dataset.deliveryId));
     
-    // Отправляем событие на сервер через WebSocket
-    const socket = io();
+    // Отправляем событие на сервер через WebSocket, используя глобальный сокет
+    // const socket = io(); // Удаляем, это было ошибкой
     socket.emit('delete_deliveries', idsToDelete);
 }
 
@@ -436,24 +453,16 @@ async function optimizeSelectedRoute() {
 
         const routeData = await optimizeRoute(selectedDeliveries);
         
-        // Временно генерируем ID маршрута на клиенте. В будущем это тоже должно быть на сервере.
-        const routeId = `R-${Date.now()}`; 
+        // Больше не генерируем ID и не меняем статус на клиенте
         
-        selectedDeliveries.forEach(delivery => {
-            delivery.routeId = routeId;
-            delivery.status = 'ready'; // Эту логику тоже нужно будет перенести на сервер
-        });
-
         currentRouteData = {
             ...routeData,
-            routeId: routeId,
+            // routeId будет присвоен сервером
+            deliveryIds: selectedDeliveries.map(d => d.id), // Передаем ID доставок
             deliveries: selectedDeliveries
         };
 
         hideLoader();
-        // После построения маршрута нужно будет обновить таблицу, чтобы показать номера маршрутов
-        // Это будет сделано в рамках задачи по real-time обновлениям
-        // loadAndRenderDeliveries();
         showRouteResults(currentRouteData);
         updateUI();
 
@@ -483,7 +492,8 @@ async function optimizeRoute(selectedDeliveries) {
 }
 
 function showRouteResults(routeData) {
-    routeNumber.textContent = `№${routeData.routeId}`;
+    // routeNumber.textContent = `№${routeData.routeId}`; // Удаляем, т.к. ID еще нет
+    routeNumber.textContent = 'Новый маршрут';
     deliveriesCount.textContent = routeData.deliveries.length;
     totalDistance.textContent = routeData.totalDistance.text;
     totalDuration.textContent = routeData.totalDuration.text;
@@ -508,32 +518,21 @@ function showRouteError(message) {
 
 // Работа с Яндекс.Картами
 function openRouteInYandexMaps(routeId) {
+    // Эта функция теперь используется только для ссылки из таблицы.
+    // Для попапа используется yandexMapsUrl из currentRouteData
     if (routeId && typeof routeId === 'string') {
-        // Клик по номеру маршрута в таблице
-        const route = findRouteById(routeId);
+        const route = findRouteById(routeId); // Эта функция может потребовать доработки
         if (route && route.yandexMapsUrl) {
             window.open(route.yandexMapsUrl, '_blank');
         }
     } else {
-        // Клик из модального окна результатов
         if (currentRouteData && currentRouteData.yandexMapsUrl) {
             window.open(currentRouteData.yandexMapsUrl, '_blank');
         }
     }
 }
 
-function copyRouteLink() {
-    if (currentRouteData && currentRouteData.yandexMapsUrl) {
-        navigator.clipboard.writeText(currentRouteData.yandexMapsUrl).then(() => {
-            copyRouteLinkBtn.textContent = '✓ Скопировано!';
-            setTimeout(() => {
-                copyRouteLinkBtn.innerHTML = '📋 Копировать ссылку';
-            }, 2000);
-        }).catch(() => {
-            alert('Не удалось скопировать ссылку');
-        });
-    }
-}
+// copyRouteLinkBtn.addEventListener('click', copyRouteLink); // Удаляем
 
 function findRouteById(routeId) {
     // В реальном приложении здесь был бы поиск в базе данных
@@ -542,6 +541,17 @@ function findRouteById(routeId) {
         return currentRouteData;
     }
     return null;
+}
+
+function handleCreateRoute() {
+    if (!currentRouteData) return;
+    
+    socket.emit('create_route', {
+        deliveryIds: currentRouteData.deliveryIds,
+        // Можно передать и другие данные, если нужно
+    });
+    
+    closeModal(routeModal);
 }
 
 // Вспомогательные функции
