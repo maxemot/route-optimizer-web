@@ -73,9 +73,15 @@ header p {
 }
 
 /* Управляющие элементы */
-.controls {
+.main-controls {
     display: flex;
     gap: 15px;
+    align-items: center;
+}
+
+.controls-wrapper {
+    display: flex;
+    justify-content: space-between;
     align-items: center;
     margin-bottom: 25px;
     background: rgba(255, 255, 255, 0.95);
@@ -84,8 +90,7 @@ header p {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
 }
 
-.selected-info {
-    margin-left: auto;
+.selection-info {
     font-weight: 600;
     color: #4a5568;
     background: #e2e8f0;
@@ -530,12 +535,3 @@ input[type="checkbox"] {
     font-weight: 600;
     color: #2d3748;
 } 
-
-/* --- Новые стили статусов --- */
-.status-badge.status-in-route {
-    background-color: #3b82f6; /* Синий */
-}
-
-.status-badge.status-delivered {
-    background-color: #16a34a; /* Зеленый */
-}

@@ -17,118 +17,122 @@
             <p>Создавайте доставки, оптимизируйте маршруты и отслеживайте статусы</p>
         </header>
 
-        <div class="main-controls">
-            <button id="add-delivery-btn" class="btn btn-primary">➕ Добавить доставку</button>
-            <button id="optimize-route-btn" class="btn btn-success" disabled>🗺️ Построить маршрут</button>
-            <button id="delete-deliveries-btn" class="btn btn-danger" disabled>🗑️ Удалить</button>
-        </div>
-        <div class="selection-info">
-            <span id="selected-count">Выбрано: 0 доставок</span>
-        </div>
-
-        <div class="table-container">
-            <table id="deliveries-table" class="deliveries-table">
-                <thead>
-                    <tr>
-                        <th>
-                            <input type="checkbox" id="select-all">
-                        </th>
-                        <th>№ Доставки</th>
-                        <th>Адрес</th>
-                        <th>Координаты</th>
-                        <th>Статус</th>
-                        <th>Объем (м³)</th>
-                        <th>На точке (мин)</th>
-                        <th>Дата</th>
-                        <th>№ Маршрута</th>
-                    </tr>
-                </thead>
-                <tbody id="deliveries-tbody">
-                    <!-- Строки будут добавляться динамически -->
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Модальное окно добавления доставки -->
-        <div id="delivery-modal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3>➕ Добавить новую доставку</h3>
-                    <span class="close">&times;</span>
+        <main>
+            <div class="controls-wrapper">
+                <div class="main-controls">
+                    <button id="add-delivery-btn" class="btn btn-primary">➕ Добавить доставку</button>
+                    <button id="optimize-route-btn" class="btn btn-success" disabled>🗺️ Построить маршрут</button>
+                    <button id="delete-deliveries-btn" class="btn btn-danger" disabled>��️ Удалить</button>
                 </div>
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label for="delivery-address">Адрес доставки:</label>
-                        <input type="text" id="delivery-address" placeholder="Например: Москва, ул. Тверская, 1">
-                        <div id="address-coordinates" class="coordinates-display"></div>
-                        <div id="address-error" class="error-message"></div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="delivery-volume">Объем (м³):</label>
-                            <input type="number" id="delivery-volume" step="0.1" min="0" value="1.0">
-                        </div>
-                        <div class="form-group">
-                            <label for="delivery-time">Время на точке (мин):</label>
-                            <input type="number" id="delivery-time" min="1" value="15">
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button id="cancel-delivery" class="btn btn-secondary">Отмена</button>
-                    <button id="save-delivery" class="btn btn-primary">Сохранить</button>
+                <div class="selection-info">
+                    <span id="selected-count">Выбрано: 0 доставок</span>
                 </div>
             </div>
-        </div>
 
-        <!-- Модальное окно результатов маршрута -->
-        <div id="route-modal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3>🗺️ Маршрут построен</h3>
-                    <span class="close">&times;</span>
-                </div>
-                <div class="modal-body">
-                    <div id="route-info">
-                        <div class="route-summary">
-                            <div class="summary-item">
-                                <span class="label">Номер маршрута:</span>
-                                <span id="route-number" class="value"></span>
+            <div class="table-container">
+                <table id="deliveries-table" class="deliveries-table">
+                    <thead>
+                        <tr>
+                            <th>
+                                <input type="checkbox" id="select-all">
+                            </th>
+                            <th>№ Доставки</th>
+                            <th>Адрес</th>
+                            <th>Координаты</th>
+                            <th>Статус</th>
+                            <th>Объем (м³)</th>
+                            <th>На точке (мин)</th>
+                            <th>Дата</th>
+                            <th>№ Маршрута</th>
+                        </tr>
+                    </thead>
+                    <tbody id="deliveries-tbody">
+                        <!-- Строки будут добавляться динамически -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Модальное окно добавления доставки -->
+            <div id="delivery-modal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>➕ Добавить новую доставку</h3>
+                        <span class="close">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="delivery-address">Адрес доставки:</label>
+                            <input type="text" id="delivery-address" placeholder="Например: Москва, ул. Тверская, 1">
+                            <div id="address-coordinates" class="coordinates-display"></div>
+                            <div id="address-error" class="error-message"></div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="delivery-volume">Объем (м³):</label>
+                                <input type="number" id="delivery-volume" step="0.1" min="0" value="1.0">
                             </div>
-                            <div class="summary-item">
-                                <span class="label">Доставок в маршруте:</span>
-                                <span id="deliveries-count" class="value"></span>
-                            </div>
-                            <div class="summary-item">
-                                <span class="label">Общее расстояние:</span>
-                                <span id="total-distance" class="value"></span>
-                            </div>
-                            <div class="summary-item">
-                                <span class="label">Общее время:</span>
-                                <span id="total-duration" class="value"></span>
+                            <div class="form-group">
+                                <label for="delivery-time">Время на точке (мин):</label>
+                                <input type="number" id="delivery-time" min="1" value="15">
                             </div>
                         </div>
-                        
-                        <div class="route-steps">
-                            <h4>Порядок доставок:</h4>
-                            <div id="route-steps-list" class="route-steps"></div>
-                        </div>
-                        
-                        <div id="route-error" class="error-message"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button id="cancel-delivery" class="btn btn-secondary">Отмена</button>
+                        <button id="save-delivery" class="btn btn-primary">Сохранить</button>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button id="open-yandex-maps" class="btn btn-secondary">🗺️ Открыть на карте</button>
-                    <button id="create-route-btn" class="btn btn-success">Создать маршрут</button>
+            </div>
+
+            <!-- Модальное окно результатов маршрута -->
+            <div id="route-modal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>🗺️ Маршрут построен</h3>
+                        <span class="close">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <div id="route-info">
+                            <div class="route-summary">
+                                <div class="summary-item">
+                                    <span class="label">Номер маршрута:</span>
+                                    <span id="route-number" class="value"></span>
+                                </div>
+                                <div class="summary-item">
+                                    <span class="label">Доставок в маршруте:</span>
+                                    <span id="deliveries-count" class="value"></span>
+                                </div>
+                                <div class="summary-item">
+                                    <span class="label">Общее расстояние:</span>
+                                    <span id="total-distance" class="value"></span>
+                                </div>
+                                <div class="summary-item">
+                                    <span class="label">Общее время:</span>
+                                    <span id="total-duration" class="value"></span>
+                                </div>
+                            </div>
+                            
+                            <div class="route-steps">
+                                <h4>Порядок доставок:</h4>
+                                <div id="route-steps-list" class="route-steps"></div>
+                            </div>
+                            
+                            <div id="route-error" class="error-message"></div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button id="open-yandex-maps" class="btn btn-secondary">🗺️ Открыть на карте</button>
+                        <button id="create-route-btn" class="btn btn-success">Создать маршрут</button>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Загрузчик -->
-        <div id="loader" class="loader hidden">
-            <div class="spinner"></div>
-            <p>Обработка...</p>
-        </div>
+            <!-- Загрузчик -->
+            <div id="loader" class="loader hidden">
+                <div class="spinner"></div>
+                <p>Обработка...</p>
+            </div>
+        </main>
     </div>
 
         <script src="/socket.io/socket.io.js"></script>

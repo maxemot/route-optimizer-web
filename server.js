@@ -397,6 +397,86 @@ function formatDuration(seconds) {
     return { value: seconds, text: text.trim() || 'меньше минуты' };
 }
 
+
+app.post('/api/routing', async (req, res) => {
+    try {
+        const allDeliveries = await kv.get('deliveries') || [];
+        const allRoutes = await kv.get('routes') || [];
+
+        const deliveriesToRoute = allDeliveries.filter(d => ['new', 'flex'].includes(d.status));
+        if (deliveriesToRoute.length === 0) {
+            return res.status(200).json({ message: "Нет доставок для маршрутизации.", routesCreated: 0, deliveriesAffected: 0 });
+        }
+
+        const oldFlexRouteIds = [...new Set(deliveriesToRoute.filter(d => d.routeId).map(d => d.routeId))];
+        const coordinates = deliveriesToRoute.map(d => d.coordinates);
+
+        // 1. Строим один большой маршрут
+        const distanceMatrix = await calculateMockDistanceMatrix(coordinates);
+        const tspSolution = solveTsp(distanceMatrix.duration, distanceMatrix.distance);
+        
+        const orderedDeliveries = tspSolution.path.map(index => deliveriesToRoute[index -1]); // -1 так как TSP отдает индексы 1..N
+
+        // 2. Нарезаем на маршруты по 6 часов
+        const MAX_CHUNK_SECONDS = 6 * 60 * 60;
+        let chunkedRoutes = [];
+        let currentChunk = [];
+        let currentChunkTime = 0;
+
+        for (const delivery of orderedDeliveries) {
+            const deliveryTime = (delivery.timeAtPoint || 0) * 60;
+            if (currentChunk.length > 0 && currentChunkTime + deliveryTime > MAX_CHUNK_SECONDS) {
+                chunkedRoutes.push(currentChunk);
+                currentChunk = [];
+                currentChunkTime = 0;
+            }
+            currentChunk.push(delivery);
+            currentChunkTime += deliveryTime;
+        }
+        if (currentChunk.length > 0) {
+            chunkedRoutes.push(currentChunk);
+        }
+
+        // 3. Обновляем данные в KV
+        const remainingRoutes = allRoutes.filter(r => !oldFlexRouteIds.includes(r.id));
+        let nextRouteId = (await kv.get('nextRouteId')) || 1;
+        const finalRoutes = [];
+        const updatedDeliveries = [];
+
+        for (const chunk of chunkedRoutes) {
+            const newRouteId = nextRouteId++;
+            const deliveryIds = chunk.map(d => d.id);
+            finalRoutes.push({ id: newRouteId, deliveryIds, createdAt: new Date().toISOString() });
+            chunk.forEach(d => {
+                updatedDeliveries.push({ ...d, routeId: newRouteId, status: 'flex' });
+            });
+        }
+        
+        await kv.set('routes', [...remainingRoutes, ...finalRoutes]);
+        const otherDeliveries = allDeliveries.filter(d => !['new', 'flex'].includes(d.status));
+        await kv.set('deliveries', [...otherDeliveries, ...updatedDeliveries]);
+        await kv.set('nextRouteId', nextRouteId);
+        
+        io.emit('deliveries_updated', updatedDeliveries.map(d => ({
+            ...d,
+            id: formatDeliveryId(d.id),
+            routeId: formatRouteId(d.routeId),
+            createdAt: formatCreationDate(d.createdAt)
+        })));
+
+        res.json({ 
+            message: "Маршрутизация завершена",
+            routesCreated: finalRoutes.length,
+            deliveriesAffected: updatedDeliveries.length,
+        });
+
+    } catch (error) {
+        console.error('❌ Ошибка выполнения маршрутизации:', error);
+        res.status(500).json({ error: 'Внутренняя ошибка сервера при маршрутизации' });
+    }
+});
+
+
 /*
 server.listen(PORT, () => {
     console.log(`🚀 Сервер запущен на порту ${PORT}`);

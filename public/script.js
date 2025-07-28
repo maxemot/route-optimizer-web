@@ -266,7 +266,6 @@ async function saveDelivery() {
         // id и status будут присвоены сервером
         address: address,
         coordinates: geocodedAddresses[address],
-        // status: 'pending', // УДАЛЕНО: сервер теперь всегда ставит 'new'
         volume: volume,
         timeAtPoint: timeAtPoint,
         routeId: null
