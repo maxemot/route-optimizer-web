@@ -87,7 +87,7 @@ app.post('/api/deliveries', async (req, res) => {
 });
 
 app.get('/api/release-time', (req, res) => {
-    const releaseTime = "2025-07-28T07:20:00.000Z";
+    const releaseTime = "2025-07-28T07:26:27.000Z";
     const date = new Date(releaseTime);
     const mskDate = new Date(date.getTime() + (3 * 60 * 60 * 1000));
     const day = String(mskDate.getUTCDate()).padStart(2, '0');
@@ -237,4 +237,4 @@ server.listen(PORT, () => {
     console.log(`🚀 Сервер запущен на порту ${PORT}`);
 });
 
-module.exports = app;
+module.exports = server;
