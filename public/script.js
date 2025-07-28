@@ -64,10 +64,21 @@ function initializeWebSocket() {
 
     socket.on('new_delivery', (newDelivery) => {
         console.log('📦 Получена новая доставка по WebSocket:', newDelivery);
-        // Просто перезагружаем все доставки.
-        // Это самый простой способ, более сложная логика (добавление одной строки)
-        // может привести к рассинхрону.
-        loadAndRenderDeliveries();
+
+        // Проверяем, не отображена ли уже эта доставка
+        if (document.querySelector(`tr[data-delivery-id='${newDelivery.id}']`)) {
+            console.log(`Доставка #${newDelivery.id} уже есть в таблице.`);
+            return;
+        }
+
+        // Добавляем новую строку, если ее нет
+        const emptyStateRow = deliveriesTbody.querySelector('.empty-state');
+        if (emptyStateRow) {
+            emptyStateRow.parentElement.innerHTML = '';
+        }
+        const newRow = createDeliveryRow(newDelivery);
+        deliveriesTbody.appendChild(newRow);
+        updateUI();
     });
 
     socket.on('disconnect', () => {
@@ -214,13 +225,8 @@ async function saveDelivery() {
     const volume = parseFloat(deliveryVolume.value);
     const timeAtPoint = parseInt(deliveryTime.value);
 
-    if (!address || !geocodedAddresses[address]) {
+    if (!address || !geocodedAddresses[address] || volume <= 0 || timeAtPoint <= 0) {
         showAddressError('Пожалуйста, введите корректный адрес и дождитесь получения координат');
-        return;
-    }
-
-    if (volume <= 0 || timeAtPoint <= 0) {
-        showAddressError('Объем и время должны быть больше нуля');
         return;
     }
 
@@ -245,11 +251,17 @@ async function saveDelivery() {
         if (!response.ok) {
             throw new Error('Ошибка при сохранении доставки на сервере');
         }
+        
+        const savedDelivery = await response.json(); // Получаем созданную доставку с ID
 
-        // Теперь нам не нужно перезагружать данные здесь,
-        // так как сервер пришлет обновление по WebSocket всем клиентам (включая нас).
-        // await loadAndRenderDeliveries(); // Удаляем
-
+        // Немедленно отрисовываем новую строку в таблице
+        const emptyStateRow = deliveriesTbody.querySelector('.empty-state');
+        if (emptyStateRow) {
+            emptyStateRow.parentElement.innerHTML = ''; // Убираем сообщение о пустой таблице
+        }
+        const newRow = createDeliveryRow(savedDelivery);
+        deliveriesTbody.appendChild(newRow);
+        
         hideLoader();
         closeModal(deliveryModal);
         updateUI();
