@@ -273,13 +273,9 @@ async function saveDelivery() {
         
         const savedDelivery = await response.json(); // Получаем созданную доставку с ID
 
-        // Немедленно отрисовываем новую строку в таблице
-        const emptyStateRow = deliveriesTbody.querySelector('.empty-state');
-        if (emptyStateRow) {
-            emptyStateRow.parentElement.innerHTML = ''; // Убираем сообщение о пустой таблице
-        }
-        const newRow = createDeliveryRow(savedDelivery);
-        deliveriesTbody.appendChild(newRow);
+        // Отрисовка теперь происходит через WebSocket, поэтому этот блок не нужен.
+        // Сервер отправит событие 'new_delivery' всем клиентам (включая этого),
+        // и доставка будет добавлена в таблицу в обработчике socket.on('new_delivery').
         
         hideLoader();
         closeModal(deliveryModal);
