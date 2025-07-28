@@ -193,10 +193,21 @@ app.post('/api/geocode', async (req, res) => {
 
 app.post('/api/optimize-route', async (req, res) => {
     try {
-        let { addresses, coordinates } = req.body;
-        if (!addresses || !coordinates || addresses.length !== coordinates.length || addresses.length < 1) {
+        const { deliveryIds } = req.body;
+        if (!deliveryIds || deliveryIds.length < 1) {
             return res.status(400).json({ error: 'Необходимо предоставить минимум 1 адрес' });
         }
+
+        // Получаем все доставки и фильтруем нужные
+        const allDeliveries = await kv.get('deliveries') || [];
+        const selectedDeliveries = allDeliveries.filter(d => deliveryIds.includes(d.id));
+
+        if (selectedDeliveries.length !== deliveryIds.length) {
+             return res.status(404).json({ error: 'Одна или несколько выбранных доставок не найдены в базе' });
+        }
+
+        let addresses = selectedDeliveries.map(d => d.address);
+        let coordinates = selectedDeliveries.map(d => d.coordinates);
         
         const startPoint = { address: "Поповка, Московская обл., 141892", coordinates: "37.298805 56.150459" };
         addresses.unshift(startPoint.address);
