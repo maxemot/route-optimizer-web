@@ -17,17 +17,14 @@
             <p>Создавайте доставки, оптимизируйте маршруты и отслеживайте статусы</p>
         </header>
 
-        <div class="controls">
-            <button id="add-delivery-btn" class="btn btn-primary">
-                ➕ Добавить доставку
-            </button>
-            <button id="optimize-route-btn" class="btn btn-success" disabled>
-                🗺️ Построить маршрут
-            </button>
-            <button id="delete-deliveries-btn" class="btn btn-danger" disabled>
-                🗑️ Удалить
-            </button>
-            <span id="selected-count" class="selected-info">Выбрано: 0 доставок</span>
+        <div class="main-controls">
+            <button id="add-delivery-btn" class="btn btn-primary">➕ Добавить доставку</button>
+            <button id="optimize-route-btn" class="btn btn-secondary" disabled>🗺️ Построить маршрут</button>
+            <button id="routing-btn" class="btn btn-success">✨ Маршрутизация</button>
+            <button id="delete-deliveries-btn" class="btn btn-danger" disabled>🗑️ Удалить</button>
+        </div>
+        <div class="selection-info">
+            <span id="selected-count">Выбрано: 0 доставок</span>
         </div>
 
         <div class="table-container">

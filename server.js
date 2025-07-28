@@ -97,7 +97,8 @@ app.post('/api/routes', async (req, res) => {
         deliveries.forEach(d => {
             // --- ИСПРАВЛЕНИЕ: Используем массив числовых ID для поиска ---
             if (numericDeliveryIds.includes(d.id)) {
-                deliveriesToUpdate.push({ ...d, routeId: routeId, status: 'ready' });
+                // ИЗМЕНЕНИЕ СТАТУСА: Теперь при создании маршрута статус становится 'flex'
+                deliveriesToUpdate.push({ ...d, routeId: routeId, status: 'flex' });
             } else {
                 allOtherDeliveries.push(d);
             }
@@ -184,7 +185,9 @@ app.post('/api/deliveries', async (req, res) => {
         if (!newDelivery || !newDelivery.address || !newDelivery.coordinates) {
             return res.status(400).json({ error: 'Некорректные данные для доставки' });
         }
-        newDelivery.createdAt = new Date().toISOString(); // Добавляем дату создания
+        // ИЗМЕНЕНИЕ СТАТУСА: Принудительно ставим 'new' и добавляем дату создания
+        newDelivery.status = 'new';
+        newDelivery.createdAt = new Date().toISOString(); 
 
         const deliveries = await kv.get('deliveries') || [];
         const nextId = (await kv.get('nextDeliveryId')) || 1;
@@ -394,6 +397,145 @@ function formatDuration(seconds) {
     return { value: seconds, text: text.trim() || 'меньше минуты' };
 }
 
+// --- VRP (VEHICLE ROUTING PROBLEM) SOLVER ---
+
+async function solveVrp(deliveriesToRoute) {
+    if (deliveriesToRoute.length === 0) {
+        return { routes: [], unassigned: [] };
+    }
+
+    const MAX_ROUTE_SECONDS = 8 * 60 * 60; // 8 часов в секундах
+    const startPoint = { id: 'start', address: "Поповка, Московская обл., 141892", coordinates: "37.298805 56.150459", timeAtPoint: 0 };
+
+    let remainingDeliveries = [...deliveriesToRoute];
+    const finalRoutes = [];
+
+    while (remainingDeliveries.length > 0) {
+        let currentRoute = [];
+        let currentRouteDuration = 0;
+        let lastPoint = startPoint;
+        let routeChanged = true;
+
+        while(routeChanged) {
+            routeChanged = false;
+            let bestCandidate = null;
+            let minAddedDuration = Infinity;
+
+            for (let i = 0; i < remainingDeliveries.length; i++) {
+                const candidate = remainingDeliveries[i];
+                const timeFromLast = await calculateMockDistanceMatrix([lastPoint.coordinates, candidate.coordinates]);
+                const timeToStart = await calculateMockDistanceMatrix([candidate.coordinates, startPoint.coordinates]);
+                
+                const addedDuration = timeFromLast.duration[0][1] + (candidate.timeAtPoint * 60) + timeToStart.duration[0][1];
+                const potentialTotalDuration = currentRouteDuration + addedDuration;
+                
+                if (potentialTotalDuration <= MAX_ROUTE_SECONDS) {
+                    if (addedDuration < minAddedDuration) {
+                        minAddedDuration = addedDuration;
+                        bestCandidate = { delivery: candidate, index: i };
+                    }
+                }
+            }
+
+            if (bestCandidate) {
+                const { delivery, index } = bestCandidate;
+                
+                // Добавляем кандидата в маршрут
+                currentRoute.push(delivery);
+                
+                // Обновляем время
+                const timeFromLastToCandidate = (await calculateMockDistanceMatrix([lastPoint.coordinates, delivery.coordinates])).duration[0][1];
+                currentRouteDuration += timeFromLastToCandidate + (delivery.timeAtPoint * 60);
+
+                // Удаляем из доступных
+                remainingDeliveries.splice(index, 1);
+                lastPoint = delivery;
+                routeChanged = true;
+            }
+        }
+        
+        // Добавляем время на возврат на базу
+        const returnDuration = (await calculateMockDistanceMatrix([lastPoint.coordinates, startPoint.coordinates])).duration[0][1];
+        currentRouteDuration += returnDuration;
+
+        if (currentRoute.length > 0) {
+            finalRoutes.push({
+                deliveries: currentRoute,
+                totalDuration: currentRouteDuration
+            });
+        }
+    }
+
+    return { routes: finalRoutes, unassigned: remainingDeliveries };
+}
+
+
+app.post('/api/routing', async (req, res) => {
+    try {
+        const allDeliveries = await kv.get('deliveries') || [];
+        const allRoutes = await kv.get('routes') || [];
+
+        const deliveriesToRoute = allDeliveries.filter(d => d.status === 'new' || d.status === 'flex');
+        const oldFlexRouteIds = [...new Set(deliveriesToRoute.filter(d => d.routeId).map(d => d.routeId))];
+
+        const vrpResult = await solveVrp(deliveriesToRoute);
+        
+        if (vrpResult.unassigned.length > 0) {
+            console.warn(`Не удалось распределить ${vrpResult.unassigned.length} доставок.`);
+        }
+
+        // Удаляем старые flex-маршруты
+        const remainingRoutes = allRoutes.filter(r => !oldFlexRouteIds.includes(r.id));
+        let nextRouteId = await kv.get('nextRouteId');
+
+        const createdRoutes = [];
+        const updatedDeliveries = [];
+
+        for (const route of vrpResult.routes) {
+            const newRouteId = nextRouteId++;
+            const deliveryIds = route.deliveries.map(d => d.id);
+            
+            const newRoute = {
+                id: newRouteId,
+                deliveryIds: deliveryIds,
+                totalDuration: formatDuration(route.totalDuration),
+                createdAt: new Date().toISOString()
+            };
+            createdRoutes.push(newRoute);
+
+            route.deliveries.forEach(d => {
+                updatedDeliveries.push({ ...d, routeId: newRouteId, status: 'flex' });
+            });
+        }
+        
+        // Обновляем состояние в KV
+        await kv.set('routes', [...remainingRoutes, ...createdRoutes]);
+        const otherDeliveries = allDeliveries.filter(d => d.status !== 'new' && d.status !== 'flex');
+        await kv.set('deliveries', [...otherDeliveries, ...updatedDeliveries]);
+        await kv.set('nextRouteId', nextRouteId);
+        
+        // Оповещаем клиентов
+        io.emit('deliveries_updated', updatedDeliveries.map(d => ({
+            ...d,
+            id: formatDeliveryId(d.id),
+            routeId: formatRouteId(d.routeId),
+            createdAt: formatCreationDate(d.createdAt)
+        })));
+        
+        res.json({ 
+            message: "Маршрутизация завершена",
+            routesCreated: createdRoutes.length,
+            deliveriesAffected: updatedDeliveries.length,
+            unassignedCount: vrpResult.unassigned.length
+        });
+
+    } catch (error) {
+        console.error('❌ Ошибка выполнения маршрутизации:', error);
+        res.status(500).json({ error: 'Внутренняя ошибка сервера при маршрутизации' });
+    }
+});
+
+
 /*
 server.listen(PORT, () => {
     console.log(`🚀 Сервер запущен на порту ${PORT}`);
@@ -401,3 +543,4 @@ server.listen(PORT, () => {
 */
 
 module.exports = server;
+module.exports.solveVrp = solveVrp; // Экспортируем для тестов

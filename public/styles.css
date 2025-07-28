@@ -530,3 +530,20 @@ input[type="checkbox"] {
     font-weight: 600;
     color: #2d3748;
 } 
+
+/* --- Новые стили статусов --- */
+.status-badge.status-new {
+    background-color: #6b7280; /* Серый */
+}
+
+.status-badge.status-flex {
+    background-color: #f97316; /* Оранжевый */
+}
+
+.status-badge.status-fixed {
+    background-color: #8b5cf6; /* Фиолетовый */
+}
+
+.status-badge.status-default {
+    background-color: #4b5563; /* Темно-серый */
+}
