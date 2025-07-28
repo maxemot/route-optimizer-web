@@ -34,9 +34,7 @@ const totalDistance = document.getElementById('total-distance');
 const totalDuration = document.getElementById('total-duration');
 const routeStepsList = document.getElementById('route-steps-list');
 const openYandexMapsBtn = document.getElementById('open-yandex-maps');
-// copyRouteLinkBtn.addEventListener('click', copyRouteLink); // Удаляем
 const createRouteBtn = document.getElementById('create-route-btn');
-createRouteBtn.addEventListener('click', handleCreateRoute);
 const routeError = document.getElementById('route-error');
 
 let currentRouteData = null;
@@ -165,9 +163,7 @@ function initializeEventListeners() {
 
     // Результаты маршрута
     openYandexMapsBtn.addEventListener('click', openRouteInYandexMaps);
-    createRouteBtn.addEventListener('click', handleCreateRoute); // Используем существующую константу
-    routeError.textContent = '';
-    openModal(routeModal);
+    createRouteBtn.addEventListener('click', handleCreateRoute);
 }
 
 // Работа с модальными окнами
