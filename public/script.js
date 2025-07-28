@@ -165,9 +165,7 @@ function initializeEventListeners() {
 
     // Результаты маршрута
     openYandexMapsBtn.addEventListener('click', openRouteInYandexMaps);
-    // copyRouteLinkBtn.addEventListener('click', copyRouteLink); // Удаляем
-    const createRouteBtn = document.getElementById('create-route-btn');
-    createRouteBtn.addEventListener('click', handleCreateRoute);
+    createRouteBtn.addEventListener('click', handleCreateRoute); // Используем существующую константу
     routeError.textContent = '';
     openModal(routeModal);
 }
@@ -338,9 +336,12 @@ function createDeliveryRow(delivery) {
     row.dataset.deliveryId = delivery.id;
 
     const statusBadge = getStatusBadge(delivery.status);
-    const routeCell = delivery.routeId 
-        ? `<a href="https://yandex.ru/maps/?rtext=${delivery.address}" target="_blank" class="route-link" data-route-id="${delivery.routeId}">№${delivery.routeId}</a>` 
-        : '—';
+    let routeCell = '—';
+    if (delivery.routeId) {
+        // Убрали отсюда формирование ссылки, оно будет в другом месте, 
+        // так как для полной ссылки нужны все точки маршрута
+        routeCell = `<span class="route-link" data-route-id="${delivery.routeId}">${delivery.routeId}</span>`;
+    }
 
     row.innerHTML = `
         <td>
@@ -354,6 +355,12 @@ function createDeliveryRow(delivery) {
         <td>${delivery.timeAtPoint} мин</td>
         <td>${routeCell}</td>
     `;
+    
+    // Добавляем обработчик на клик по номеру маршрута
+    const routeLink = row.querySelector('.route-link');
+    if (routeLink) {
+        routeLink.addEventListener('click', () => openCompleteRouteInYandexMaps(delivery.routeId));
+    }
 
     return row;
 }
@@ -517,18 +524,31 @@ function showRouteError(message) {
 }
 
 // Работа с Яндекс.Картами
-function openRouteInYandexMaps(routeId) {
-    // Эта функция теперь используется только для ссылки из таблицы.
-    // Для попапа используется yandexMapsUrl из currentRouteData
-    if (routeId && typeof routeId === 'string') {
-        const route = findRouteById(routeId); // Эта функция может потребовать доработки
-        if (route && route.yandexMapsUrl) {
-            window.open(route.yandexMapsUrl, '_blank');
-        }
-    } else {
-        if (currentRouteData && currentRouteData.yandexMapsUrl) {
-            window.open(currentRouteData.yandexMapsUrl, '_blank');
-        }
+async function openCompleteRouteInYandexMaps(routeId) {
+    if (!routeId) return;
+    
+    // 1. Получаем все доставки, чтобы найти нужные
+    const response = await fetch('/api/deliveries');
+    const allDeliveries = await response.json();
+    
+    // 2. Находим все доставки, принадлежащие этому маршруту
+    const routeDeliveries = allDeliveries.filter(d => d.routeId === routeId);
+    if (routeDeliveries.length === 0) return;
+    
+    // 3. Формируем URL. "Поповка" -> точки маршрута -> "Поповка"
+    const startPoint = "Поповка, Московская обл., 141892";
+    const waypoints = routeDeliveries.map(d => d.address);
+    const fullRoutePoints = [startPoint, ...waypoints, startPoint];
+    const yandexMapsUrl = 'https://yandex.ru/maps/?rtext=' + fullRoutePoints.map(addr => encodeURIComponent(addr)).join('~') + '&rtt=auto';
+    
+    // 4. Открываем ссылку
+    window.open(yandexMapsUrl, '_blank');
+}
+
+function openRouteInYandexMaps() {
+    // Эта функция теперь используется ТОЛЬКО для кнопки в попапе (до создания маршрута)
+    if (currentRouteData && currentRouteData.yandexMapsUrl) {
+        window.open(currentRouteData.yandexMapsUrl, '_blank');
     }
 }
 
