@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      overflow: hidden;
+      background-color: #f8f9fa;
+    }
+    .container {
+      text-align: center;
+    }
+    .loader {
+      border: 5px solid #e9ecef;
+      border-top: 5px solid #007bff;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .success {
+      font-size: 50px;
+      color: #28a745;
+      line-height: 1;
+    }
+    .error {
+      font-size: 50px;
+      color: #dc3545;
+      line-height: 1;
+    }
+    #message {
+      margin-top: 20px;
+      font-size: 1.1em;
+      color: #212529;
+    }
+    #error-details {
+      margin-top: 10px;
+      font-size: 0.8em;
+      color: #6c757d;
+      max-width: 280px;
+      word-wrap: break-word;
+    }
+    #close-button {
+      margin-top: 20px;
+      padding: 8px 16px;
+      font-size: 1em;
+      cursor: pointer;
+      display: none;
+      background-color: #6c757d;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="icon-container">
+      <div class="loader"></div>
+    </div>
+    <p id="message"><?!= initialMessage ?></p>
+    <p id="error-details"></p>
+    <button id="close-button" onclick="google.script.host.close()">Закрыть</button>
+  </div>
+
+  <script>
+    const tkData = <?!= JSON.stringify(tkData) ?>;
+
+    window.addEventListener('DOMContentLoaded', () => {
+      google.script.run
+        .withSuccessHandler(onSuccess)
+        .withFailureHandler(onFailure)
+        .performTkActionViaFetch(tkData);
+    });
+
+    function onSuccess(result) {
+      const iconContainer = document.getElementById('icon-container');
+      const message = document.getElementById('message');
+      
+      iconContainer.innerHTML = '<div class="success">&#10004;</div>';
+      message.textContent = 'Готово!';
+      
+      setTimeout(() => {
+        google.script.host.close();
+      }, 1000);
+    }
+
+    function onFailure(error) {
+      const iconContainer = document.getElementById('icon-container');
+      const message = document.getElementById('message');
+      const errorDetails = document.getElementById('error-details');
+      const closeButton = document.getElementById('close-button');
+      
+      iconContainer.innerHTML = '<div class="error">&#10006;</div>';
+      message.textContent = 'Ошибка!';
+      errorDetails.textContent = error.message;
+      closeButton.style.display = 'block';
+    }
+  </script>
+</body>
+</html> 

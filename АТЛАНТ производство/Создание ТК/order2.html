@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 10px;
+      margin-bottom: 30px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #f2f2f2;
+      font-weight: bold;
+    }
+    tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+    h2 {
+      color: #555;
+      margin-top: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .summary-box {
+      background-color: #f5f5f5;
+      border: 1px solid #ddd;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 5px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .summary-title {
+      font-weight: bold;
+      margin-bottom: 10px;
+      font-size: 1.2em;
+    }
+    .summary-item {
+      margin-bottom: 5px;
+    }
+    .create-tk-button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 8px 15px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 1em;
+      transition: all 0.3s ease;
+    }
+    .create-tk-button:hover {
+      background-color: #45a049;
+    }
+    .create-tk-button:disabled {
+      background-color: #cccccc;
+      color: #666666;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <!-- Блок с информацией по заказу -->
+  <div class="summary-box">
+    <div style="display: flex; align-items: center;">
+      <div style="width: 120px; height: 120px; min-width: 120px; background: #f0f0f0; border: 1px solid #ddd; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-right: 20px;">
+        <img id="product-photo" src="" alt="фото" style="max-width: 100%; max-height: 100%; object-fit: contain; display: none;" />
+        <span id="photo-placeholder">Нет фото</span>
+      </div>
+      <div>
+        <div class="summary-title">Информация по заказу</div>
+        <div class="summary-item"><b>Номер заказа:</b> <?= data.orderNumber ?></div>
+        <div class="summary-item"><b>Артикул изделия:</b> <?= data.targetProduct ?></div>
+        <div class="summary-item"><b>Количество:</b> <?= data.quantity ?></div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Таблица с операциями -->
+  <div>
+    <h2>
+      Операции
+      <button id="createTKButton" class="create-tk-button" onclick="createTKs()">Создать Цех</button>
+    </h2>
+    <table id="operations-table">
+      <thead>
+        <tr>
+          <th style="width: 60%;">Операция</th>
+          <th style="width: 10%;">Время</th>
+          <th style="width: 30%;">Статус</th>
+        </tr>
+      </thead>
+      <tbody>
+      <? if (data.operations && data.operations.length > 0) { ?>
+        <? for (var i = 0; i < data.operations.length; i++) { ?>
+          <tr>
+            <td><?= data.operations[i].name ?></td>
+            <td><?= data.operations[i].time ?></td>
+            <td><?= data.operations[i].status ?></td>
+          </tr>
+        <? } ?>
+      <? } else { ?>
+        <tr>
+          <td colspan="3">Операции для данного изделия не найдены.</td>
+        </tr>
+      <? } ?>
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    const data = <?!= JSON.stringify(data) ?>;
+    const webAppUrl = data.webAppUrl;
+    
+    // --- UTILITY: Вызов серверной функции через doPost ---
+    function runServerFunction(functionName, args) {
+      if (!webAppUrl) {
+        return Promise.reject(new Error("URL веб-приложения не был получен."));
+      }
+
+      return new Promise((resolve, reject) => {
+        fetch(webAppUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'text/plain;charset=utf-8',
+          },
+          body: JSON.stringify({ functionName: functionName, args: args || [] })
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Сетевой ответ не был успешным. Статус: ' + response.status);
+          }
+          return response.json();
+        })
+        .then(result => {
+          if (result.success && result.data !== undefined) {
+            if (typeof result.data === 'object' && result.data !== null && result.data.success === false) {
+              reject(new Error(result.data.message || 'Серверная функция сообщила об ошибке.'));
+            } else {
+              resolve(result.data);
+            }
+          } else if (result.success === false) {
+            reject(new Error(result.message || 'Неизвестная ошибка сервера.'));
+          } else {
+            reject(new Error('Получен неожиданный формат ответа от сервера.'));
+          }
+        })
+        .catch(error => {
+            console.error('Ошибка в runServerFunction:', error);
+            reject(new Error('Ошибка при выполнении запроса: ' + error.message));
+        });
+      });
+    }
+
+    // --- ИНИЦИАЛИЗАЦИЯ ---
+    window.addEventListener('DOMContentLoaded', function() {
+      // Загрузка фото изделия
+      runServerFunction('getProductPhotoBase64', [data.targetProduct])
+        .then(onPhotoLoaded)
+        .catch(error => {
+          console.error('Ошибка при загрузке фото:', error);
+          onPhotoLoaded(null); // Показываем плейсхолдер
+        });
+      
+      // Проверка статуса ТК для кнопки
+      checkTKStatus();
+    });
+
+    // --- ОБРАБОТЧИКИ UI ---
+    function onPhotoLoaded(photoBase64) {
+      var img = document.getElementById('product-photo');
+      var placeholder = document.getElementById('photo-placeholder');
+      if (photoBase64 && photoBase64.startsWith('data:image/')) {
+        img.src = photoBase64;
+        img.style.display = 'block';
+        placeholder.style.display = 'none';
+      } else {
+        img.style.display = 'none';
+        placeholder.style.display = 'block';
+      }
+    }
+
+    function checkTKStatus() {
+      var allCreated = true;
+      var table = document.getElementById('operations-table');
+      var rows = table.getElementsByTagName('tr');
+      
+      for (var i = 1; i < rows.length; i++) {
+        var cells = rows[i].getElementsByTagName('td');
+        if (cells.length > 2 && cells[2].textContent.trim() === 'не создана') {
+          allCreated = false;
+          break;
+        }
+      }
+      
+      var button = document.getElementById('createTKButton');
+      if (allCreated) {
+        button.disabled = true;
+        button.textContent = 'Цех создан';
+      } else {
+        button.disabled = false;
+        button.textContent = 'Создать Цех';
+      }
+    }
+
+    function createTKs() {
+      var button = document.getElementById('createTKButton');
+      button.disabled = true;
+      button.textContent = 'Создание...';
+
+      var operationsToCreate = [];
+      var table = document.getElementById('operations-table');
+      var rows = table.getElementsByTagName('tr');
+      for (var i = 1; i < rows.length; i++) {
+        var cells = rows[i].getElementsByTagName('td');
+        if (cells.length > 2 && cells[2].textContent.trim() === 'не создана') {
+          operationsToCreate.push(cells[0].textContent.trim());
+        }
+      }
+
+      if (operationsToCreate.length === 0) {
+        checkTKStatus();
+        return;
+      }
+      
+      const args = [
+        operationsToCreate,
+        data.orderNumber,
+        data.targetProduct,
+        Number(data.quantity)
+      ];
+
+      runServerFunction('createOperationTechCards', args)
+        .then(onTKsCreated)
+        .catch(function(error) {
+          button.disabled = false;
+          button.textContent = 'Создать Цех';
+          alert('Произошла ошибка: ' + error.message);
+        });
+    }
+    
+    function onTKsCreated(result) {
+      if (result && result.success) {
+        var table = document.getElementById('operations-table');
+        var rows = table.getElementsByTagName('tr');
+        for (var i = 1; i < rows.length; i++) {
+          var cells = rows[i].getElementsByTagName('td');
+          var opName = cells[0].textContent.trim();
+          if (result.createdTKs && result.createdTKs[opName]) {
+            cells[2].textContent = result.createdTKs[opName];
+          }
+        }
+      } else if (result) {
+          alert('Не удалось создать ТК: ' + result.message);
+      }
+      
+      checkTKStatus();
+    }
+  </script>
+</body>
+</html> 

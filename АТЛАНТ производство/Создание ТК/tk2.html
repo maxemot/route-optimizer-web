@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      background-color: #fff;
+    }
+    .summary-box {
+      background-color: #fff;
+      border: none;
+      padding: 15px 10px;
+      margin-bottom: 4px;
+      width: 100%;
+      max-width: none;
+      box-sizing: border-box;
+      box-shadow: none;
+    }
+    .summary-title {
+      font-weight: bold;
+      margin-bottom: 10px;
+      font-size: 1.1em;
+      color: #333;
+    }
+    .summary-item {
+      margin-bottom: 5px;
+      font-size: 1em;
+    }
+    .operation-box {
+        font-weight: bold;
+        text-align: center;
+        margin: 4px 0 10px 0;
+        padding: 15px 10px;
+        border-radius: 8px;
+        width: 100%;
+        max-width: none;
+        box-sizing: border-box;
+        transition: background-color 0.3s ease;
+        position: relative;
+    }
+    .operation-status {
+      display: block;
+      font-size: 1.6em;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      font-weight: bold;
+    }
+    .operation-name {
+      font-size: 2.2em;
+      color: #333;
+    }
+    .action-block {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        background: #fff;
+        border: 2px solid #9166AA;
+        border-radius: 10px;
+        padding: 20px 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        width: 100%;
+        max-width: none;
+        box-sizing: border-box;
+        margin-top: 20px;
+    }
+    .action-info {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 8px 15px;
+        width: 100%;
+        font-size: 1.1em;
+    }
+    .action-label {
+        color: #888;
+        text-align: left;
+    }
+    .action-value {
+        font-weight: bold; 
+        color: #222;
+    }
+    .button-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+        margin-top: 15px;
+        width: 100%;
+    }
+    .main-actions, .secondary-actions {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      width: 100%;
+    }
+    .action-button {
+        padding: 10px 15px;
+        border: none;
+        border-radius: 8px;
+        font-size: 1.1em;
+        font-weight: bold;
+        cursor: pointer;
+        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 160px;
+        flex: none;
+    }
+    .start-button, .resume-button { background-color: #E6BFBF; }
+    .start-button:hover:not(:disabled), .resume-button:hover:not(:disabled) { background-color: #D9AFAF; }
+    
+    .finish-button { background-color: #B2D8B4; }
+    .finish-button:hover:not(:disabled) { background-color: #A1C9A3; }
+
+    .pause-button { background-color: #e0e0e0; }
+    .pause-button:hover:not(:disabled) { background-color: #bdbdbd; }
+
+    .reset-button { background-color: #ef9a9a; }
+    .reset-button:hover:not(:disabled) { background-color: #e57373; }
+
+    .action-button:disabled {
+        background-color: #cccccc;
+        color: #666666;
+        cursor: not-allowed;
+    }
+    .print-button {
+        background: none;
+        border: none;
+        font-size: 2em;
+        cursor: pointer;
+        color: #888;
+    }
+    .print-button:disabled {
+        color: #ccc;
+        cursor: not-allowed;
+    }
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100vh;
+      background-color: rgba(255, 255, 255, 0.95);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    .loading-icon {
+      font-size: 5em;
+      animation: spin-broom 1.5s linear infinite;
+    }
+    .loading-text {
+      font-size: 1.5em;
+      margin-top: 20px;
+      color: #333;
+    }
+    .loading-text::after {
+      overflow: hidden;
+      display: inline-block;
+      vertical-align: bottom;
+      animation: ellipsis-dot 1.5s infinite steps(4, end);
+      content: "...";
+    }
+    @keyframes spin-broom {
+      0% { transform: rotate(0deg); }
+      50% { transform: rotate(-90deg); }
+      100% { transform: rotate(0deg); }
+    }
+    @keyframes ellipsis-dot {
+      0% { content: ""; }
+      25% { content: "."; }
+      50% { content: ".."; }
+      75% { content: "..."; }
+    }
+    .warning-box {
+      display: none; /* Скрыт по умолчанию */
+      background-color: #ffebee;
+      border: 1px solid #d32f2f;
+      color: #d32f2f;
+      padding: 15px;
+      margin-top: 20px;
+      border-radius: 8px;
+      text-align: center;
+      font-weight: bold;
+      width: 100%;
+      max-width: 550px;
+      box-sizing: border-box;
+    }
+    .loader {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #6c757d;
+        border-radius: 50%;
+        width: 16px;
+        height: 16px;
+        animation: spin 1s linear infinite;
+        display: none; /* Скрыт по умолчанию */
+        margin-right: 8px;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body data-script-data="<?!= encodeURIComponent(JSON.stringify(data)) ?>">
+<div id="mainContent">
+  <!-- 1. Блок с информацией по заказу -->
+  <div class="summary-box">
+    <div style="display: flex; align-items: flex-start;">
+      <div style="width: 180px; height: 180px; min-width: 180px; background: #f0f0f0; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-right: 10px;">
+        <img id="product-photo" src="" alt="фото" style="max-width: 100%; max-height: 100%; object-fit: contain; display: none;" />
+        <span id="photo-placeholder">Нет фото</span>
+      </div>
+      <div>
+        <div class="summary-item"><b>Номер заказа:</b> <?= data.orderNumber ?></div>
+        <div class="summary-item"><b>Артикул изделия:</b> <?= data.targetProduct ?></div>
+        <? if (data.productName) { ?>
+          <div class="summary-item" style="color: #555;"><?= data.productName ?></div>
+        <? } ?>
+        <div class="summary-item"><b>Количество:</b> <?= data.quantity ?></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Название операции -->
+  <div id="operationBox" class="operation-box">
+    <span id="operationStatus" class="operation-status"></span>
+    <span class="operation-name"><?= data.operationName ?></span>
+    <div id="workTimer" style="position: absolute; top: 15px; right: 15px; font-size: 1.1em; color: #444;">
+      <span>&#x23F0; </span>
+      <span id="workTimerValue" style="font-weight: bold;"></span>
+    </div>
+  </div>
+
+  <!-- 3. Блок "Начало, Конец, Работник" -->
+  <div class="action-block">
+    <div id="lockedWarningBox" class="warning-box" style="margin: 0 0 15px 0; display: none; background-color: #ffcdd2; border-color: #c62828; color: #c62828;">
+        Эту ТК уже выполняет другой сотрудник: <b id="assignedWorkerName"></b>
+    </div>
+    <div class="action-info">
+      <div class="action-label">Начало:</div>
+      <div class="action-value" id="startTime" style="font-weight: normal;"><?= data.formattedStartTime ?></div>
+      
+      <div class="action-label">Обновлено:</div>
+      <div class="action-value" id="lastChangeTime" style="font-weight: normal;"><?= data.formattedLastChangeTime ?></div>
+      
+      <div class="action-label">Мой аккаунт:</div>
+      <div class="action-value"><?= data.workerName ?></div>
+
+      <div class="action-label">Доступы:</div>
+      <div class="action-value" style="font-weight: normal; color: #555; font-size: 0.75em;"><?= data.userAccess ?></div>
+    </div>
+    <div id="buttonContainer" class="button-container">
+      <div id="splitInputBlock" style="display: none; width: 100%; align-items: center; gap: 15px;">
+        <span id="backFromSplitButton" style="font-size: 1.5em; color: #888; cursor: pointer;">&#9664;</span>
+        <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 5px; flex-grow: 1;">
+            <span style="font-size: 1.1em;">Перенести в новую ТК:</span>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <input type="number" id="splitQuantityInput" style="width: 60px; font-size: 1.1em; padding: 5px; text-align: center; border-radius: 5px; border: 1px solid #ccc;">
+                <span id="splitTotalQuantityLabel" style="font-size: 1.1em;"></span>
+            </div>
+        </div>
+        <button id="confirmSplitButton" class="action-button" style="background-color: #a9d4d9; flex: 0 1 auto;">
+            <span class="loader"></span>
+            <span>Разделить</span>
+        </button>
+      </div>
+      <div class="main-actions">
+        <!-- Кнопки будут добавлены здесь динамически -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="loadingOverlay" class="loading-overlay">
+  <div class="loading-icon">🧹</div>
+  <div class="loading-text">удаляем работу</div>
+</div>
+
+  <script>
+    // eslint-disable-next-line no-undef
+    const data = <?!= JSON.stringify(data) ?>;
+    let currentStatus = data.status;
+    const hasAccess = data.hasAccess;
+    const webAppUrl = data.webAppUrl; // Получаем URL напрямую из переданных данных
+    /* eslint-enable */
+
+    // --- CONFIG ---
+    const statusConfig = {
+      'новая':    { text: 'Новая',    bgColor: '#EADCB9', textColor: '#8B795E' },
+      'работа':   { text: 'Работа',   bgColor: '#E6BFBF', textColor: '#8B4545' },
+      'пауза':    { text: 'Пауза',    bgColor: '#e0e0e0', textColor: '#616161' },
+      'готово':   { text: 'Готово',   bgColor: '#B2D8B4', textColor: '#467448' },
+      'no-access':{ text: 'Нет доступа', bgColor: '#ffebee', textColor: '#d32f2f' }
+    };
+
+    // --- UI ELEMENTS ---
+    let ui;
+    let timerInterval = null;
+
+    // --- INITIALIZATION ---
+    window.addEventListener('DOMContentLoaded', function() {
+      ui = {
+        operationBox: document.getElementById('operationBox'),
+        operationStatusEl: document.getElementById('operationStatus'),
+        mainActionsContainer: document.querySelector('.main-actions'),
+        secondaryActionsContainer: document.querySelector('.secondary-actions'),
+        splitInputBlock: document.getElementById('splitInputBlock'),
+        splitQuantityInput: document.getElementById('splitQuantityInput'),
+        confirmSplitButton: document.getElementById('confirmSplitButton'),
+        backFromSplitButton: document.getElementById('backFromSplitButton'),
+        splitTotalQuantityLabel: document.getElementById('splitTotalQuantityLabel'),
+        startTimeEl: document.getElementById('startTime'),
+        lastChangeTimeEl: document.getElementById('lastChangeTime'),
+        lockedWarningBox: document.getElementById('lockedWarningBox'),
+        assignedWorkerName: document.getElementById('assignedWorkerName'),
+        productPhoto: document.getElementById('product-photo'),
+        photoPlaceholder: document.getElementById('photo-placeholder'),
+        workTimer: document.getElementById('workTimer'),
+        workTimerValue: document.getElementById('workTimerValue'),
+        loadingOverlay: document.getElementById('loadingOverlay'),
+        mainContent: document.getElementById('mainContent')
+      };
+      
+      // Логика разделения должна быть доступна всегда, если есть права
+      if (data.canSplitTK) {
+        ui.confirmSplitButton.addEventListener('click', handleSplit);
+        ui.backFromSplitButton.addEventListener('click', hideSplitConfirmation);
+      }
+      
+      // Сразу запускаем инициализацию, так как URL уже есть
+      initializeApp();
+    });
+
+    function initializeApp() {
+        if (!webAppUrl) {
+            alert('Критическая ошибка: URL веб-приложения не был передан в попап. Функционал недоступен.');
+            return;
+        }
+
+        if (data.isLockedByOtherUser) {
+          showLockedWarning(data.assignedWorker);
+        } else if (hasAccess) {
+          updateUIForStatus(currentStatus);
+        } else {
+          showAccessWarning();
+        }
+        
+        runAsAdmin('getProductPhotoBase64', [data.targetProduct])
+          .then(onPhotoLoaded)
+          .catch(error => {
+            console.error('Ошибка при загрузке фото:', error);
+            onPhotoLoaded(null);
+          });
+    }
+    
+    // --- UI UPDATE FUNCTIONS ---
+
+    function updateUIForStatus(status) {
+      currentStatus = status;
+      updateStatusDisplay(status);
+      updateButtons(status);
+      updateTimer(status);
+    }
+
+    function updateStatusDisplay(status) {
+      const config = statusConfig[status] || statusConfig['новая'];
+      ui.operationBox.style.backgroundColor = config.bgColor;
+      ui.operationStatusEl.style.color = config.textColor;
+      ui.operationStatusEl.textContent = config.text;
+    }
+
+    function updateButtons(status) {
+      ui.mainActionsContainer.innerHTML = '';
+      ui.splitInputBlock.style.display = 'none';
+      ui.mainActionsContainer.style.display = 'flex';
+
+      let buttonsHtml = '';
+      const canSplit = data.canSplitTK;
+      const hasOpAccess = data.hasAccess;
+      const isLocked = data.isLockedByOtherUser;
+
+      // 1. Add standard operation buttons if the user has access and the task is not locked
+      if (!isLocked && hasOpAccess) {
+        switch(status) {
+          case 'новая':
+            buttonsHtml += `<button id="startButton" class="action-button start-button">Начать</button>`;
+            break;
+          case 'работа':
+            buttonsHtml += `<button id="pauseButton" class="action-button pause-button">Пауза</button><button id="finishButton" class="action-button finish-button">Завершить</button>`;
+            break;
+          case 'пауза':
+            buttonsHtml += `<button id="resumeButton" class="action-button resume-button">Продолжить</button>`;
+            break;
+          case 'готово':
+            buttonsHtml += `<button class="action-button" disabled>Готово</button>`;
+            break;
+        }
+      }
+
+      // 2. Add admin buttons if the user has 'РТК' rights
+      if (canSplit) {
+        if (status !== 'готово') {
+          buttonsHtml += `<button id="splitButton" class="action-button" style="background-color: #A9D4D9;">Разделить</button>`;
+        }
+        buttonsHtml += `<button id="resetButton" class="action-button reset-button">Обнулить</button>`;
+      }
+
+      ui.mainActionsContainer.innerHTML = buttonsHtml;
+      attachButtonListeners();
+    }
+
+    function attachButtonListeners() {
+      const startButton = document.getElementById('startButton');
+      if (startButton) startButton.addEventListener('click', () => handleAction('start'));
+      
+      const pauseButton = document.getElementById('pauseButton');
+      if (pauseButton) pauseButton.addEventListener('click', () => handleAction('pause'));
+
+      const finishButton = document.getElementById('finishButton');
+      if (finishButton) finishButton.addEventListener('click', () => handleAction('finish'));
+      
+      const resumeButton = document.getElementById('resumeButton');
+      if (resumeButton) resumeButton.addEventListener('click', () => handleAction('resume'));
+
+      const splitButton = document.getElementById('splitButton');
+      if (splitButton) {
+        splitButton.addEventListener('click', showSplitConfirmation);
+      }
+
+      const resetButton = document.getElementById('resetButton');
+      if (resetButton) {
+        resetButton.addEventListener('click', handleReset);
+      }
+    }
+
+    function showSplitConfirmation() {
+      ui.mainActionsContainer.style.display = 'none';
+      ui.splitInputBlock.style.display = 'flex';
+      const halfQuantity = Math.floor(data.quantity / 2);
+      ui.splitQuantityInput.value = halfQuantity > 0 ? halfQuantity : 1;
+      ui.splitQuantityInput.max = data.quantity - 1;
+      ui.splitQuantityInput.min = 1;
+      ui.splitTotalQuantityLabel.textContent = 'из ' + data.quantity;
+    }
+
+    function hideSplitConfirmation() {
+      ui.mainActionsContainer.style.display = 'flex';
+      ui.splitInputBlock.style.display = 'none';
+    }
+    
+    // --- ACTION HANDLER ---
+    
+    function runAsAdmin(functionName, args) {
+      if (!webAppUrl) {
+        return Promise.reject(new Error("URL веб-приложения не был получен."));
+      }
+
+      return new Promise((resolve, reject) => {
+        fetch(webAppUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'text/plain;charset=utf-8',
+          },
+          redirect: 'follow', // Важно для веб-приложений Apps Script
+          body: JSON.stringify({ functionName: functionName, args: args || [] })
+        })
+        .then(response => {
+          if (!response.ok) {
+            // Выводим статус-код HTTP, если ответ не успешный
+            throw new Error('Сетевой ответ не был успешным. Статус: ' + response.status);
+          }
+          return response.json();
+        })
+        .then(result => {
+          // Обрабатываем ответ от нашего роутера в doPost
+          // Он приходит в формате { success: true, data: { ... } }
+          if (result.success && result.data !== undefined) {
+             // Если серверная функция вернула свой объект {success: ...}, используем его.
+             // Иначе просто возвращаем 'сырые' данные (например, для фото).
+            if (typeof result.data === 'object' && result.data !== null && result.data.success === false) {
+              reject(new Error(result.data.message || 'Серверная функция сообщила об ошибке.'));
+            } else {
+              resolve(result.data);
+            }
+          } else if (result.success === false) {
+            // Это ошибка, перехваченная самим doPost (например, неверное имя функции)
+            reject(new Error(result.message || 'Неизвестная ошибка сервера.'));
+          } else {
+            // Неожиданный формат ответа
+            reject(new Error('Получен неожиданный формат ответа от сервера.'));
+          }
+        })
+        .catch(error => {
+            // Выводим полную ошибку в консоль и алерт
+            console.error('Ошибка в runAsAdmin:', error);
+            reject(new Error('Ошибка при выполнении запроса: ' + error.message));
+        });
+      });
+    }
+
+    function handleReset() {
+        const confirmation = confirm("Вы уверены, что хотите обнулить всю проделанную работу по данной тех карте?");
+        if (confirmation) {
+            ui.mainContent.style.display = 'none';
+            ui.loadingOverlay.style.display = 'flex';
+
+            runAsAdmin('resetTKLog', [data.tkNumber])
+                .then(result => {
+                    // result здесь уже содержит { success: true, ... }
+                    google.script.host.close();
+                })
+                .catch(error => {
+                    alert('Критическая ошибка: ' + error.message);
+                    ui.loadingOverlay.style.display = 'none';
+                    ui.mainContent.style.display = 'block';
+                });
+        }
+    }
+
+    function handleSplit() {
+        const quantityToMove = parseInt(ui.splitQuantityInput.value, 10);
+        if (isNaN(quantityToMove) || quantityToMove < 1 || quantityToMove >= data.quantity) {
+            alert(`Пожалуйста, введите корректное количество для переноса (от 1 до ${data.quantity - 1}).`);
+            return;
+        }
+
+        setAllButtonsDisabled(true);
+        const splitButton = document.getElementById('confirmSplitButton');
+        const loader = splitButton.querySelector('.loader');
+        if(loader) loader.style.display = 'inline-block';
+
+        runAsAdmin('splitTK', [quantityToMove, data.activeRow])
+            .then(result => {
+                google.script.host.close();
+            })
+            .catch(error => {
+                alert('Критическая ошибка: ' + error.message);
+                if(loader) loader.style.display = 'none';
+                setAllButtonsDisabled(false);
+            });
+    }
+
+    function handleAction(action) {
+        setAllButtonsDisabled(true);
+
+        // Передаем 7 аргументов, как и ожидает финальная версия функции на сервере
+        runAsAdmin('updateTKStatus', [
+            action, 
+            data.workerName, 
+            data.tkNumber, 
+            data.activeRow, 
+            data.accumulatedWorkTimeMs, 
+            data.lastChangeTimestamp, 
+            currentStatus
+        ])
+            .then(result => {
+                // result - это { success: true, newStatus: '...', ... }
+                // Обновляем данные в интерфейсе на основе ответа сервера
+                if (result.formattedStartTime) {
+                    ui.startTimeEl.textContent = result.formattedStartTime;
+                }
+                if (result.formattedLastChangeTime) {
+                    ui.lastChangeTimeEl.textContent = result.formattedLastChangeTime;
+                }
+                
+                if (result.newAccumulatedWorkTimeMs !== undefined) {
+                    data.accumulatedWorkTimeMs = result.newAccumulatedWorkTimeMs;
+                }
+                if (result.newLastChangeTimestamp) {
+                    data.lastChangeTimestamp = result.newLastChangeTimestamp;
+                }
+
+                if (result.newStatus !== 'готово') {
+                   ui.mainActionsContainer.style.display = 'flex';
+                }
+                updateUIForStatus(result.newStatus);
+                setAllButtonsDisabled(false);
+            })
+            .catch(error => {
+                alert('Критическая ошибка: ' + error.message);
+                setAllButtonsDisabled(false);
+            });
+    }
+    
+    // --- UTILITY FUNCTIONS ---
+
+    function setAllButtonsDisabled(disabled) {
+      const buttons = document.querySelectorAll('.action-button');
+      buttons.forEach(button => button.disabled = disabled);
+    }
+
+    function showLockedWarning(workerName) {
+        ui.lockedWarningBox.style.display = 'block';
+        ui.assignedWorkerName.textContent = workerName;
+        updateUIForStatus(currentStatus);
+    }
+
+    function showAccessWarning() {
+        updateStatusDisplay('no-access');
+        ui.mainActionsContainer.innerHTML = '';
+    }
+
+    function onPhotoLoaded(photoBase64) {
+      if (photoBase64 && photoBase64.startsWith('data:image/')) {
+        ui.productPhoto.src = photoBase64;
+        ui.productPhoto.style.display = 'block';
+        ui.photoPlaceholder.style.display = 'none';
+      } else {
+        ui.productPhoto.style.display = 'none';
+        ui.photoPlaceholder.style.display = 'block';
+      }
+    }
+
+    function updateTimer(status) {
+      if (timerInterval) clearInterval(timerInterval);
+      
+      ui.workTimer.style.display = 'block';
+
+      const updateDisplay = (ms) => {
+        ui.workTimerValue.textContent = formatMilliseconds(ms);
+      };
+      
+      if (status === 'работа') {
+        timerInterval = setInterval(() => {
+          const elapsedMs = Date.now() - data.lastChangeTimestamp;
+          const totalMs = data.accumulatedWorkTimeMs + elapsedMs;
+          updateDisplay(totalMs);
+        }, 1000);
+      } else {
+        updateDisplay(data.accumulatedWorkTimeMs);
+      }
+    }
+
+    function formatMilliseconds(ms) {
+        if (ms < 0) ms = 0;
+        const totalSeconds = Math.floor(ms / 1000);
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+
+        if (hours > 0) {
+          return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        } else {
+          return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+    }
+  </script>
+</body>
+</html> 

@@ -1,0 +1,47 @@
+name: 🚀 Автоматический деплой на Vercel
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: 📦 Деплой
+    
+    steps:
+    - name: 📁 Checkout код
+      uses: actions/checkout@v4
+      
+    - name: 🟢 Настройка Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: 📦 Установка зависимостей
+      run: npm ci
+      
+    - name: 🧪 Проверка синтаксиса
+      run: node -c server.js
+      
+    - name: 🚀 Деплой на Vercel
+      uses: amondnet/vercel-action@v25
+      with:
+        vercel-token: ${{ secrets.VERCEL_TOKEN }}
+        vercel-org-id: ${{ secrets.ORG_ID }}
+        vercel-project-id: ${{ secrets.PROJECT_ID }}
+        working-directory: ./
+        vercel-args: '--prod'
+      if: github.ref == 'refs/heads/main'
+      
+    - name: 🔍 Preview деплой
+      uses: amondnet/vercel-action@v25
+      with:
+        vercel-token: ${{ secrets.VERCEL_TOKEN }}
+        vercel-org-id: ${{ secrets.ORG_ID }}
+        vercel-project-id: ${{ secrets.PROJECT_ID }}
+        working-directory: ./
+      if: github.event_name == 'pull_request' 

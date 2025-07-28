@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      display: flex;
+      flex-wrap: wrap;
+    }
+    .left-column {
+      width: 48%;
+      margin-right: 2%;
+    }
+    .right-column {
+      width: 48%;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 10px;
+      margin-bottom: 30px;
+      table-layout: fixed;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    th {
+      background-color: #f2f2f2;
+      font-weight: bold;
+    }
+    tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+    .status-stock {
+      color: green;
+      font-weight: bold;
+    }
+    .status-cutting {
+      color: blue;
+      font-weight: bold;
+    }
+    .status-not-found {
+      color: red;
+      font-weight: bold;
+    }
+    .status-buy {
+      color: orange;
+      font-weight: bold;
+    }
+    .status-extra {
+      color: gray;
+    }
+    .efficiency {
+      color: gray;
+      font-weight: normal;
+    }
+    .error {
+      color: red;
+      font-weight: bold;
+    }
+    h1 {
+      color: #333;
+      margin-top: 30px;
+      width: 100%;
+    }
+    h2 {
+      color: #555;
+      margin-top: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .eye-button {
+      cursor: pointer;
+      margin-left: 5px;
+      vertical-align: middle;
+    }
+    .hidden-rows {
+      display: none;
+    }
+    .summary-row {
+      color: gray;
+      background-color: #f9f9f9;
+    }
+    .col-1 {
+      width: 40%;
+    }
+    .col-2 {
+      width: 20%;
+    }
+    .col-3 {
+      width: 40%;
+    }
+    .summary-box {
+      background-color: #f5f5f5;
+      border: 1px solid #ddd;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 5px;
+      width: 100%;
+    }
+    .summary-title {
+      font-weight: bold;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+    }
+    .summary-item {
+      margin-bottom: 5px;
+    }
+    .warning {
+      color: red;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    .material-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      margin-bottom: 10px;
+    }
+    .material-table th, .material-table td {
+      border: 1px solid #ddd;
+      padding: 6px 10px;
+      text-align: left;
+    }
+    .material-table th {
+      background-color: #f2f2f2;
+      font-weight: bold;
+    }
+    .material-table tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+    .cuttings-summary-table {
+      width: 100%;
+      margin-bottom: 20px;
+    }
+    .cuttings-summary-table th:nth-child(1), 
+    .cuttings-summary-table td:nth-child(1) {
+      width: 30%;
+    }
+    .cuttings-summary-table th:nth-child(2), 
+    .cuttings-summary-table td:nth-child(2) {
+      width: 20%;
+    }
+    .cuttings-summary-table th:nth-child(3), 
+    .cuttings-summary-table td:nth-child(3) {
+      width: 10%;
+      text-align: center;
+    }
+    .cuttings-summary-table th:nth-child(4), 
+    .cuttings-summary-table td:nth-child(4) {
+      width: 15%;
+      text-align: center;
+    }
+    .cuttings-summary-table th:nth-child(5), 
+    .cuttings-summary-table td:nth-child(5) {
+      width: 25%;
+      text-align: center;
+    }
+    .create-tk-button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 6.75px 13.5px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-left: 15px;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      font-size: 0.99em;
+    }
+    
+    .create-tk-button:hover {
+      background-color: #45a049;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    
+    .create-tk-button:active {
+      background-color: #3e8e41;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+      transform: translateY(2px);
+    }
+    
+    .create-tk-button:disabled {
+      background-color: #cccccc;
+      color: #666666;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+    
+    .create-tk-button.tk-created {
+      background-color: #cccccc;
+      color: #666666;
+      cursor: default;
+    }
+    .warning-box {
+      background-color: #ffebee;
+      border: 1px solid #ffcdd2;
+      padding: 10px 15px;
+      margin-bottom: 20px;
+      border-radius: 5px;
+      width: 100%;
+    }
+    
+    .warning-content {
+      display: flex;
+      align-items: center;
+      color: #d32f2f;
+      font-weight: bold;
+    }
+    
+    .warning-icon {
+      margin-right: 10px;
+      font-size: 1.2em;
+    }
+    
+    .warning-text {
+      flex: 1;
+    }
+    
+    #missing-parts-list {
+      font-weight: normal;
+    }
+  </style>
+  <script>
+    // Проверка необходимости создания ТК при загрузке страницы
+    window.onload = function() {
+      checkTechCardsStatus();
+      checkCuttingsStatus();
+    };
+    
+    // Функция для проверки статуса тех. карт
+    function checkTechCardsStatus() {
+      var allCreated = true;
+      var table = document.querySelector('.right-column table');
+      
+      if (table) {
+        var rows = table.getElementsByTagName('tr');
+        // Пропускаем заголовок (индекс 0)
+        for (var i = 1; i < rows.length; i++) {
+          var cells = rows[i].getElementsByTagName('td');
+          if (cells.length >= 4) {
+            // Если хотя бы для одной технологической карты статус "не создана"
+            if (cells[3].textContent.trim() === "не создана") {
+              allCreated = false;
+              break;
+            }
+          }
+        }
+      }
+      
+      // Обновляем состояние кнопки
+      var button = document.getElementById('createTKButton');
+      if (button) {
+        if (allCreated) {
+          // Если все ТК уже созданы
+          button.disabled = true;
+          button.textContent = 'Цех создан';
+          button.classList.add('tk-created');
+        } else {
+          // Если есть ТК для создания
+          button.disabled = false;
+          button.textContent = 'Создать цех';
+          button.classList.remove('tk-created');
+        }
+      }
+    }
+    
+    // Функция для проверки статуса раскроев
+    function checkCuttingsStatus() {
+      var allCreated = true;
+      var cuttingsTable = document.querySelector('.cuttings-summary-table');
+      
+      if (cuttingsTable) {
+        var rows = cuttingsTable.getElementsByTagName('tr');
+        // Пропускаем заголовок (индекс 0)
+        for (var i = 1; i < rows.length; i++) {
+          var cells = rows[i].getElementsByTagName('td');
+          if (cells.length >= 5) {
+            // Если хотя бы для одного раскроя статус "не создана"
+            if (cells[4].textContent.trim() === "не создана") {
+              allCreated = false;
+              break;
+            }
+          }
+        }
+      }
+      
+      // Обновляем состояние кнопки
+      var button = document.getElementById('createCuttingsButton');
+      if (button) {
+        if (allCreated) {
+          // Если все раскрои уже созданы
+          button.disabled = true;
+          button.textContent = 'Раскрои созданы';
+          button.classList.add('tk-created');
+        } else {
+          // Если есть раскрои для создания
+          button.disabled = false;
+          button.textContent = 'Создать раскрои';
+          button.classList.remove('tk-created');
+        }
+      }
+    }
+    
+    function toggleExtraParts(tableId, buttonId) {
+      var table = document.getElementById(tableId);
+      var button = document.getElementById(buttonId);
+      var hiddenRows = table.getElementsByClassName('hidden-row');
+      var summaryRow = table.getElementsByClassName('summary-row')[0];
+      
+      // Если нет скрытых строк, выходим
+      if (hiddenRows.length === 0) return;
+      
+      // Переключаем видимость скрытых строк
+      var isHidden = hiddenRows[0].classList.contains('hidden-rows');
+      
+      for (var i = 0; i < hiddenRows.length; i++) {
+        if (isHidden) {
+          hiddenRows[i].classList.remove('hidden-rows');
+        } else {
+          hiddenRows[i].classList.add('hidden-rows');
+        }
+      }
+      
+      // Переключаем видимость строки с суммой
+      if (isHidden) {
+        summaryRow.classList.add('hidden-rows');
+        button.innerHTML = '🐵'; // Открытый глаз (обезьянка)
+      } else {
+        summaryRow.classList.remove('hidden-rows');
+        button.innerHTML = '🙈'; // Закрытый глаз (обезьянка закрывающая глаза)
+      }
+    }
+    
+    function createTK() {
+      var button = document.getElementById('createTKButton');
+      // Отключаем кнопку и меняем ее внешний вид
+      button.disabled = true;
+      button.textContent = 'Создание цеха...';
+      
+      // Вызываем серверную функцию
+      google.script.run
+        .withSuccessHandler(function(result) {
+          // Показываем результат
+          onTKCreated(result);
+        })
+        .withFailureHandler(function(error) {
+          // Включаем кнопку при ошибке
+          button.disabled = false;
+          button.textContent = 'Создать цех';
+          
+          // Удаляем alert с ошибкой
+        })
+        .createTechCards();
+    }
+    
+    function createCuttings() {
+      var button = document.getElementById('createCuttingsButton');
+      // Отключаем кнопку и меняем ее внешний вид
+      button.disabled = true;
+      button.textContent = 'Создание раскроев...';
+      
+      // Собираем данные о раскроях из таблицы
+      var cuttingsData = [];
+      var cuttingsTable = document.querySelector('.cuttings-summary-table');
+      
+      if (cuttingsTable) {
+        var rows = cuttingsTable.getElementsByTagName('tr');
+        // Пропускаем заголовок (индекс 0)
+        for (var i = 1; i < rows.length; i++) {
+          var cells = rows[i].getElementsByTagName('td');
+          if (cells.length >= 5) {
+            // Добавляем только те раскрои, которые еще не созданы
+            if (cells[4].textContent.trim() === "не создана") {
+              cuttingsData.push({
+                cutting: cells[1].textContent.trim(), // Артикул раскроя
+                quantity: parseInt(cells[2].textContent.trim()) // Количество
+              });
+            }
+          }
+        }
+      }
+      
+      // Если нет раскроев для создания, выходим
+      if (cuttingsData.length === 0) {
+        button.disabled = false;
+        button.textContent = 'Создать раскрои';
+        // Удаляем alert
+        return;
+      }
+      
+      // Вызываем серверную функцию
+      google.script.run
+        .withSuccessHandler(function(result) {
+          // Включаем кнопку после завершения
+          button.disabled = false;
+          button.textContent = 'Создать раскрои';
+          
+          // Показываем результат
+          onCuttingsCreated(result);
+        })
+        .withFailureHandler(function(error) {
+          // Включаем кнопку при ошибке
+          button.disabled = false;
+          button.textContent = 'Создать раскрои';
+          
+          // Удаляем alert с ошибкой
+        })
+        .createCuttingCards(cuttingsData);
+    }
+    
+    function onTKCreated(result) {
+      if (result && result.success) {
+        if (result.allCreated) {
+          // Если все ТК созданы (в том числе и ранее)
+          var button = document.getElementById('createTKButton');
+          button.disabled = true;
+          button.textContent = 'Цех создан';
+          button.classList.add('tk-created');
+      } else {
+          // Если созданы не все ТК
+          var button = document.getElementById('createTKButton');
+          button.disabled = false;
+          button.textContent = 'Создать цех';
+        }
+        
+        // Обновляем статусы в таблице
+        if (result.createdTKs) {
+          var table = document.querySelector('.right-column table');
+          if (table) {
+            var rows = table.getElementsByTagName('tr');
+            // Пропускаем заголовок (индекс 0)
+            for (var i = 1; i < rows.length; i++) {
+              var cells = rows[i].getElementsByTagName('td');
+              if (cells.length >= 4) {
+                var code = cells[0].textContent.trim();
+                if (result.createdTKs[code]) {
+                  // Обновляем ячейку со статусом
+                  cells[3].textContent = result.createdTKs[code];
+                }
+              }
+            }
+          }
+        }
+        
+        // Проверяем, все ли ТК созданы после обновления таблицы
+        checkTechCardsStatus();
+      } else {
+        var button = document.getElementById('createTKButton');
+        button.disabled = false;
+        button.textContent = 'Создать цех';
+      }
+    }
+    
+    function onCuttingsCreated(result) {
+      if (result && result.success) {
+        // Обновляем статусы в таблице
+        if (result.createdCuttingTKs) {
+          var table = document.querySelector('.cuttings-summary-table');
+          if (table) {
+            var rows = table.getElementsByTagName('tr');
+            // Пропускаем заголовок (индекс 0)
+            for (var i = 1; i < rows.length; i++) {
+              var cells = rows[i].getElementsByTagName('td');
+              if (cells.length >= 5) {
+                var cuttingNumber = cells[1].textContent.trim();
+                if (result.createdCuttingTKs[cuttingNumber]) {
+                  // Обновляем ячейку со статусом
+                  cells[4].textContent = result.createdCuttingTKs[cuttingNumber];
+                }
+              }
+            }
+          }
+        }
+        
+        // Проверяем, все ли раскрои созданы после обновления таблицы
+        checkCuttingsStatus();
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', function() {
+      // Получаем артикул изделия из data.targetProduct
+      var productCode = "<?= data.targetProduct ?>";
+      // Вызываем серверную функцию для получения base64-строки фото
+      google.script.run.withSuccessHandler(function(photoBase64) {
+        var img = document.getElementById('product-photo');
+        if (photoBase64 && photoBase64.startsWith('data:image/')) {
+          img.src = photoBase64;
+          // Для отладки можно показать длину строки
+          var dbg = document.getElementById('photo-debug');
+          dbg.style.display = 'block';
+          dbg.textContent = 'Длина: ' + photoBase64.length;
+        } else {
+          // Если фото не найдено — оставить заглушку
+          img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDEyMCAxMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEyMCIgaGVpZ2h0PSIxMjAiIGZpbGw9IiNmNmY2ZjYiIHJ4PSIxNSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjI0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjY2NjIj7Qk9RPPPCfkIwg0J7QsdCw0L3QvtC80LAg0L/QvtC70YzQvdC+PC90ZXh0Pjwvc3ZnPg==';
+      }
+      }).getProductPhotoBase64(productCode);
+    });
+  </script>
+</head>
+<body>
+  <!-- Блок с информацией по заказу -->
+  <div class="summary-box">
+    <div style="display: flex; align-items: center;">
+      <div style="width: 120px; height: 120px; min-width: 120px; min-height: 120px; background: #f5f5f5; border: 1px solid #ddd; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-right: 18px;">
+        <img id="product-photo" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDEyMCAxMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEyMCIgaGVpZ2h0PSIxMjAiIGZpbGw9IiNmNmY2ZjYiIHJ4PSIxNSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjI0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjY2NjIj7Qk9RPPPCfkIwg0J7QsdCw0L3QvtC80LAg0L/QvtC70YzQvdC+PC90ZXh0Pjwvc3ZnPg==" alt="фото" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
+        <div id="photo-debug" style="font-size:10px;word-break:break-all;max-width:110px;overflow:auto;line-height:1.1;margin-top:2px;display:none;"></div>
+      </div>
+      <div>
+    <div class="summary-title">
+          Информация по заказу
+    </div>
+        <div class="summary-item">Номер заказа: <?= data.orderNumber ?></div>
+        <div class="summary-item">Артикул изделия: <?= data.targetProduct ?></div>
+        <div class="summary-item">Количество: <?= typeof data.quantity === 'number' ? Math.round(data.quantity) : (data.quantity || 1) ?></div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Добавляем блок для предупреждений -->
+  <div id="missing-parts-warning" class="warning-box" style="display: none;">
+    <div class="warning-content">
+      <span class="warning-icon">⚠️</span>
+      <span class="warning-text">Отсутствуют детали: <span id="missing-parts-list"></span></span>
+    </div>
+  </div>
+  
+  <?!= data.warningHtml ?>
+  
+  <div class="left-column">
+    <!-- 1. Блоки для каждого раскроя -->
+    <? if (!isEmptyObject(data.selectedCuttings)) { ?>
+      <h2>
+        Раскрои
+        <button id="createCuttingsButton" class="create-tk-button" onclick="createCuttings()">Создать раскрои</button>
+      </h2>
+      
+      <!-- Добавляем таблицу с кратким списком раскроев -->
+      <table class="cuttings-summary-table">
+        <tr>
+          <th>Материал</th>
+          <th>Раскрой</th>
+          <th>Кол-во</th>
+          <th>Эффективность</th>
+          <th>Статус</th>
+        </tr>
+        <? 
+        // 1. Формируем cuttingsList сразу после получения данных, до вывода верхней таблицы
+        var cuttingsList = [];
+        var cuttingEfficiencies = {};
+        for (var cuttingNumber in data.selectedCuttings) {
+          var usefulCountForCutting = 0;
+          var totalCountForCutting = 0;
+          for (var i = 0; i < data.cuttings[cuttingNumber].length; i++) {
+            var part = data.cuttings[cuttingNumber][i];
+            var partCode = part.partCode;
+            var quantity = part.quantity * Math.round(data.selectedCuttings[cuttingNumber]);
+            totalCountForCutting += quantity;
+              var usedFromThisCutting = 0;
+            if (data.partsToCut[partCode]) {
+              if (data.partToCutting[partCode]) {
+                for (var j = 0; j < data.partToCutting[partCode].length; j++) {
+                  if (data.partToCutting[partCode][j][0] === cuttingNumber) {
+                    usedFromThisCutting = data.partToCutting[partCode][j][1] * Math.round(data.selectedCuttings[cuttingNumber]);
+                    break;
+                  }
+                }
+              }
+              var maxNeeded = data.partsToCut[partCode] || 0;
+              var used = Math.min(usedFromThisCutting, maxNeeded);
+              usefulCountForCutting += used;
+            }
+          }
+          var efficiencyForCutting = 0;
+          if (totalCountForCutting > 0) {
+            efficiencyForCutting = usefulCountForCutting / totalCountForCutting * 100;
+          }
+          cuttingEfficiencies[cuttingNumber] = efficiencyForCutting >= 1 ? Math.round(efficiencyForCutting) + "%" : efficiencyForCutting.toFixed(1).replace('.', ',') + "%";
+          
+          // Определяем название материала для раскроя
+          var materialName = "Раскрой";
+          if (data.cuttings[cuttingNumber] && data.cuttings[cuttingNumber].length > 0) {
+            var partCode = data.cuttings[cuttingNumber][0].partCode;
+            var match = partCode.match(/[А-Я]+/);
+            if (match && data.materialNames && data.materialNames[match[0]]) {
+              materialName = data.materialNames[match[0]];
+            } else if (match) {
+              materialName = "Раскрой " + match[0];
+            }
+          }
+          cuttingsList.push({
+            material: materialName,
+            number: cuttingNumber,
+            quantity: Math.round(data.selectedCuttings[cuttingNumber]),
+            efficiency: cuttingEfficiencies[cuttingNumber],
+            status: (data.cuttingTKs && data.cuttingTKs[cuttingNumber]) ? data.cuttingTKs[cuttingNumber] : "не создана"
+          });
+        }
+        
+        // 2. Считаем количество раскроев по каждому материалу для верхней таблицы
+        var materialCounts = {};
+        for (var i = 0; i < cuttingsList.length; i++) {
+          var material = cuttingsList[i].material;
+          var quantity = cuttingsList[i].quantity;
+          materialCounts[material] = (materialCounts[material] || 0) + quantity;
+        }
+        
+        // Сортируем раскрои по номеру (как строки)
+        cuttingsList.sort(function(a, b) {
+          return a.number.localeCompare(b.number);
+        });
+        
+        // Выводим строки таблицы
+        for (var i = 0; i < cuttingsList.length; i++) {
+          var cutting = cuttingsList[i];
+        ?>
+          <tr>
+            <td><?= cutting.material ?></td>
+            <td><?= cutting.number ?></td>
+            <td><?= cutting.quantity ?></td>
+            <td><?= cutting.efficiency ?></td>
+            <td><?= cutting.status ?></td>
+          </tr>
+        <? } ?>
+      </table>
+      
+      <? 
+      var tableId = 0;
+      for (var cuttingNumber in data.selectedCuttings) { 
+        tableId++;
+        var currentTableId = "table_" + tableId;
+        var currentButtonId = "button_" + tableId;
+        
+        // Рассчитываем эффективность раскроя
+        var usefulArea = 0;
+        var totalArea = 0;
+        
+        // Проверяем наличие дублирующихся артикулов в раскрое
+        var partCodes = [];
+        for (var i = 0; i < data.cuttings[cuttingNumber].length; i++) {
+          partCodes.push(data.cuttings[cuttingNumber][i].partCode);
+        }
+        var uniquePartCodes = [];
+        var hasDuplicates = false;
+        
+        for (var i = 0; i < partCodes.length; i++) {
+          if (uniquePartCodes.indexOf(partCodes[i]) === -1) {
+            uniquePartCodes.push(partCodes[i]);
+          } else {
+            hasDuplicates = true;
+            break;
+          }
+        }
+        
+        for (var i = 0; i < data.cuttings[cuttingNumber].length; i++) {
+          var part = data.cuttings[cuttingNumber][i];
+          var partCode = part.partCode;
+          var quantity = part.quantity;
+          var area = part.area;
+          
+          // Общая площадь всех деталей в раскрое
+          totalArea += area * quantity;
+          
+          // Если деталь нужна для изделия, считаем полезную площадь
+          if (data.partsToCut[partCode]) {
+            var usedFromThisCutting = 0;
+            if (data.partToCutting[partCode]) {
+              for (var j = 0; j < data.partToCutting[partCode].length; j++) {
+                if (data.partToCutting[partCode][j][0] === cuttingNumber) {
+                  usedFromThisCutting = data.partToCutting[partCode][j][1];
+                  break;
+                }
+              }
+            }
+            
+            var maxNeeded = data.partsToCut[partCode] || 0;
+            var used = Math.min(usedFromThisCutting, maxNeeded);
+            usefulArea += area * used;
+          }
+        }
+        
+        // Рассчитываем эффективность
+        var efficiency = 0;
+        if (totalArea > 0) {
+          efficiency = usefulArea / totalArea * 100;
+        }
+        
+        // Форматируем эффективность: если 0%, то выводим с точностью до 1 знака
+        var efficiencyStr = efficiency >= 1 ? Math.round(efficiency) + "%" : efficiency.toFixed(1).replace('.', ',') + "%";
+        
+        // Добавляем предупреждение о дублирующихся артикулах
+        var errorStr = hasDuplicates ? ' <span style="color: red; font-weight: bold;">⚠️Ошибка</span>' : '';
+        
+        // Проверяем наличие деталей из разных материалов в раскрое
+        var materials = [];
+        var hasMixedMaterials = false;
+        
+        for (var i = 0; i < data.cuttings[cuttingNumber].length; i++) {
+          var partCode = data.cuttings[cuttingNumber][i].partCode;
+          
+          // Извлекаем буквенную часть артикула (материал)
+          var material = "";
+          var match = partCode.match(/[А-Я]+/);
+          if (match) {
+            material = match[0];
+            if (materials.indexOf(material) === -1) {
+              materials.push(material);
+            }
+          }
+        }
+        
+        // Если найдено более одного типа материала, указываем на ошибку
+        hasMixedMaterials = materials.length > 1;
+        
+        // Определяем название материала для заголовка раскроя
+        var materialName = "Раскрой"; // По умолчанию
+        if (!hasMixedMaterials && materials.length === 1) {
+          // Если материал один, пытаемся найти его полное название
+          var shortName = materials[0];
+          if (data.materialNames && data.materialNames[shortName]) {
+            materialName = data.materialNames[shortName];
+          }
+        }
+        
+        // Добавляем сообщение об ошибке материалов
+        var materialsErrorStr = hasMixedMaterials ? 
+          ' <span style="color: red; font-weight: bold;">ошибка материалов</span>' : '';
+        
+        // 1. Исправление эффективности в заголовке блока по каждому раскрою
+        var usefulCountForCutting = 0;
+        var totalCountForCutting = 0;
+        for (var i = 0; i < data.cuttings[cuttingNumber].length; i++) {
+          var part = data.cuttings[cuttingNumber][i];
+          var partCode = part.partCode;
+          var quantity = part.quantity * Math.round(data.selectedCuttings[cuttingNumber]);
+          totalCountForCutting += quantity;
+          var usedFromThisCutting = 0;
+          if (data.partsToCut[partCode]) {
+            if (data.partToCutting[partCode]) {
+              for (var j = 0; j < data.partToCutting[partCode].length; j++) {
+                if (data.partToCutting[partCode][j][0] === cuttingNumber) {
+                  usedFromThisCutting = data.partToCutting[partCode][j][1] * Math.round(data.selectedCuttings[cuttingNumber]);
+                  break;
+                }
+              }
+            }
+            var maxNeeded = data.partsToCut[partCode] || 0;
+            var used = Math.min(usedFromThisCutting, maxNeeded);
+            usefulCountForCutting += used;
+          }
+        }
+        var efficiencyForCutting = 0;
+        if (totalCountForCutting > 0) {
+          efficiencyForCutting = usefulCountForCutting / totalCountForCutting * 100;
+        }
+        var efficiencyStrForCutting = efficiencyForCutting >= 1 ? Math.round(efficiencyForCutting) + "%" : efficiencyForCutting.toFixed(1).replace('.', ',') + "%";
+      ?>
+      
+      <h3><?= materialName ?> <?= cuttingNumber ?> (<?= Math.round(data.selectedCuttings[cuttingNumber]) ?> шт) 
+        <span class="efficiency">эффективность <?= efficiencyStrForCutting ?></span>
+        <?!= errorStr ?><?!= materialsErrorStr ?>
+      </h3>
+      <table id="<?= currentTableId ?>">
+        <tr>
+          <?
+          // Получаем все детали в этом раскрое
+          var neededPartsArray = [];
+          var extraPartsInCutting = [];
+          
+          for (var i = 0; i < data.cuttings[cuttingNumber].length; i++) {
+            var part = data.cuttings[cuttingNumber][i];
+            var partCode = part.partCode;
+            var quantityInCutting = part.quantity;
+            
+            // Определяем, нужна ли деталь и сколько
+            var totalNeeded = data.components[partCode] || 0;
+            var stockQty = data.stock[partCode] || 0;
+            
+            // Если деталь нужна для изделия
+            if (data.components[partCode]) {
+              // Сколько нужно вырезать (с учетом склада)
+              var toCut = Math.max(0, totalNeeded - stockQty);
+              
+              // Определяем статус
+              var cuttingQuantity = Math.round(data.selectedCuttings[cuttingNumber]);
+              var usedFromThisCutting = 0;
+              if (data.partToCutting[partCode]) {
+                for (var j = 0; j < data.partToCutting[partCode].length; j++) {
+                  if (data.partToCutting[partCode][j][0] === cuttingNumber) {
+                    usedFromThisCutting = data.partToCutting[partCode][j][1];
+                    break;
+                  }
+                }
+              }
+              
+              // Умножаем количество нужных деталей на количество раскроев, 
+              // но не превышая общую потребность для этой детали
+              var totalNeededForAll = data.partsToCut[partCode]; // Общая потребность в детали
+              
+              // Умножаем количество в одном раскрое на количество раскроев
+              var availableInThisCutting = Math.round(usedFromThisCutting) * cuttingQuantity;
+              // Количество лишних - это все детали, которые дает раскрой, минус нужные
+              var totalPartsInCuttings = Math.round(quantityInCutting) * cuttingQuantity;
+              
+              var neededPartsCount = Math.min(availableInThisCutting, totalNeededForAll);
+              var extraParts = totalPartsInCuttings - neededPartsCount;
+              
+              var status = "нужно " + neededPartsCount + ", лишние " + extraParts;
+              var statusClass = "";
+              
+              // Добавляем в список нужных деталей
+              neededPartsArray.push({
+                'partCode': partCode,
+                'stockQty': stockQty,
+                'status': status,
+                'needed': neededPartsCount,
+                'extra': extraParts,
+                'statusClass': statusClass
+              });
+            } else {
+              // Деталь не нужна для изделия
+              var cuttingQuantity = Math.round(data.selectedCuttings[cuttingNumber]);
+              var extraParts = Math.round(quantityInCutting) * cuttingQuantity;
+              var status = "нужно 0, лишние " + extraParts;
+              var statusClass = "status-extra";
+              
+              // Добавляем в список лишних деталей
+              extraPartsInCutting.push({
+                'partCode': partCode,
+                'stockQty': stockQty,
+                'status': status,
+                'needed': 0,
+                'extra': quantityInCutting * cuttingQuantity,
+                'statusClass': statusClass
+              });
+            }
+          }
+          
+          // Подсчитываем суммарные значения для лишних деталей
+          var totalExtraParts = extraPartsInCutting.length;
+          ?>
+          
+          <!-- Добавляем кнопку с глазом только если есть лишние детали -->
+          <? if (totalExtraParts > 0) { ?>
+            <th class="col-1">Артикул <span id="<?= currentButtonId ?>" class="eye-button" onclick="toggleExtraParts('<?= currentTableId ?>', '<?= currentButtonId ?>')">🙈</span></th>
+          <? } else { ?>
+            <th class="col-1">Артикул</th>
+          <? } ?>
+          <th class="col-2">На складе</th>
+          <th class="col-3">Статус</th>
+        </tr>
+        
+        <!-- Сначала выводим нужные детали -->
+        <? for (var i = 0; i < neededPartsArray.length; i++) { 
+          var part = neededPartsArray[i];
+        ?>
+          <tr class="<?= part.statusClass ?>">
+            <td><?= part.partCode ?></td>
+            <td><?= Math.round(part.stockQty) ?></td>
+            <td><?= part.status ?></td>
+          </tr>
+        <? } ?>
+        
+        <? 
+        // Подсчитываем суммарные значения для лишних деталей
+        var totalStockQty = 0;
+        var totalNeeded = 0;
+        var totalExtra = 0;
+        
+        for (var i = 0; i < extraPartsInCutting.length; i++) {
+          totalStockQty += extraPartsInCutting[i].stockQty;
+          totalNeeded += extraPartsInCutting[i].needed;
+          totalExtra += extraPartsInCutting[i].extra;
+        }
+        
+        // Добавляем строку с суммой лишних деталей только если есть лишние детали
+        if (totalExtraParts > 0) {
+        ?>
+          <tr class="summary-row">
+            <td>Лишних артикулов <?= totalExtraParts ?></td>
+            <td><?= Math.round(totalStockQty) ?></td>
+            <td>нужно <?= Math.round(totalNeeded) ?>, лишние <?= Math.round(totalExtra) ?></td>
+          </tr>
+          
+          <!-- Затем выводим лишние детали (изначально скрытые) -->
+          <? for (var i = 0; i < extraPartsInCutting.length; i++) { 
+            var part = extraPartsInCutting[i];
+          ?>
+            <tr class="<?= part.statusClass ?> hidden-row hidden-rows">
+              <td><?= part.partCode ?></td>
+              <td><?= Math.round(part.stockQty) ?></td>
+              <td><?= part.status ?></td>
+            </tr>
+          <? } ?>
+        <? } ?>
+      </table>
+      <? } ?>
+    <? } ?>
+  </div>
+  
+  <div class="right-column">
+    <!-- Таблица с уникальными значениями из схемы -->
+    <? if (data.uniqueValues && data.uniqueValues.length > 0) { ?>
+      <h2>
+        Цех
+        <button id="createTKButton" class="create-tk-button" onclick="createTK()">Создать цеха</button>
+      </h2>
+      <table>
+        <tr>
+          <th style="width:35%">Артикул</th>
+          <th style="width:10%">Кол-во</th>
+          <th style="width:35%">Операции</th>
+          <th style="width:20%">Статус</th>
+        </tr>
+        <? for (var i = 0; i < data.uniqueValues.length; i++) { ?>
+          <tr>
+            <td><?= data.uniqueValues[i].code ?></td>
+            <td><?= data.uniqueValues[i].quantity ?></td>
+            <td><?= data.uniqueValues[i].operations ?></td>
+            <td><?= data.uniqueValues[i].tkNumber || "не создана" ?></td>
+          </tr>
+        <? } ?>
+      </table>
+    <? } ?>
+    
+    <!-- 2. Блок для деталей, которые нужно купить -->
+    <? 
+    var partsToBuy = {};
+    for (var part in data.components) {
+      if (!isCuttingPart(part)) {  // Не раскройная деталь
+        var stockQty = data.stock[part] || 0;
+        var qty = data.components[part];
+        if (stockQty < qty) {  // Нужно докупить
+          partsToBuy[part] = qty - stockQty;
+        }
+      }
+    }
+    
+    function isCuttingPart(partCode) {
+      // Проверяем, содержит ли код букву "Р" с возможными другими буквами после неё
+      if (partCode.indexOf('Р') === -1) {
+        return false;
+      }
+      
+      // Находим позицию буквы "Р"
+      var rPos = partCode.indexOf('Р');
+      
+      // Проверяем, что до буквы "Р" только цифры и точки
+      var beforeR = partCode.substring(0, rPos);
+      for (var i = 0; i < beforeR.length; i++) {
+        var c = beforeR.charAt(i);
+        if (!(c >= '0' && c <= '9') && c !== '.') {
+          return false;
+        }
+      }
+      
+      return true;
+    }
+    
+    function isEmptyObject(obj) {
+      for (var key in obj) {
+        if (obj.hasOwnProperty(key)) {
+          return false;
+        }
+      }
+      return true;
+    }
+    
+    if (!isEmptyObject(partsToBuy)) {
+      tableId++;
+      var currentTableId = "table_" + tableId;
+      var currentButtonId = "button_" + tableId;
+    ?>
+      <h2>Нужно купить</h2>
+      <table id="<?= currentTableId ?>">
+        <tr>
+          <th>Артикул</th>
+          <th>На складе</th>
+          <th>Купить</th>
+        </tr>
+        
+        <? 
+        // Сортируем ключи объекта
+        var sortedKeys = Object.keys(partsToBuy).sort();
+        for (var i = 0; i < sortedKeys.length; i++) {
+          var part = sortedKeys[i];
+          var qtyToBuy = partsToBuy[part];
+          var stockQty = data.stock[part] || 0;
+        ?>
+          <tr>
+            <td><?= part ?></td>
+            <td><?= Math.round(stockQty) ?></td>
+            <td><?= Math.round(qtyToBuy) ?></td>
+          </tr>
+        <? } ?>
+      </table>
+    <? } ?>
+    
+    <!-- 3. Блок для деталей, которые есть на складе -->
+    <? 
+    var partsInStock = {};
+    for (var part in data.components) {
+      var qty = data.components[part];
+      var stockQty = data.stock[part] || 0;
+      if (stockQty > 0) {  // Есть на складе (хотя бы частично)
+        partsInStock[part] = Math.min(qty, stockQty);  // Берем со склада сколько есть, но не больше чем нужно
+      }
+    }
+    
+    if (!isEmptyObject(partsInStock)) {
+      tableId++;
+      var currentTableId = "table_" + tableId;
+      var currentButtonId = "button_" + tableId;
+    ?>
+      <h2>Есть на складе</h2>
+      <table id="<?= currentTableId ?>">
+        <tr>
+          <th>Артикул</th>
+          <th>На складе</th>
+          <th>Берем</th>
+        </tr>
+        
+        <? 
+        // Сортируем ключи объекта
+        var sortedKeys = Object.keys(partsInStock).sort();
+        for (var i = 0; i < sortedKeys.length; i++) {
+          var part = sortedKeys[i];
+          var qtyUsed = partsInStock[part];
+          var stockQty = data.stock[part] || 0;
+        ?>
+          <tr>
+            <td><?= part ?></td>
+            <td><?= Math.round(stockQty) ?></td>
+            <td><?= Math.round(qtyUsed) ?></td>
+          </tr>
+        <? } ?>
+      </table>
+    <? } ?>
+  </div>
+</body>
+</html> 

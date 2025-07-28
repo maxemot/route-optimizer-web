@@ -1,0 +1,11 @@
+{
+  "": {
+    "swift-dependencies": "/Users/maksimshchegolikhin/Desktop/Programming/.build/arm64-apple-macosx/debug/OverlayApp.build/master.swiftdeps"
+  },
+  "/Users/maksimshchegolikhin/Desktop/Programming/Sources/OverlayApp/main.swift": {
+    "dependencies": "/Users/maksimshchegolikhin/Desktop/Programming/.build/arm64-apple-macosx/debug/OverlayApp.build/main.d",
+    "object": "/Users/maksimshchegolikhin/Desktop/Programming/.build/arm64-apple-macosx/debug/OverlayApp.build/main.swift.o",
+    "swiftmodule": "/Users/maksimshchegolikhin/Desktop/Programming/.build/arm64-apple-macosx/debug/OverlayApp.build/main~partial.swiftmodule",
+    "swift-dependencies": "/Users/maksimshchegolikhin/Desktop/Programming/.build/arm64-apple-macosx/debug/OverlayApp.build/main.swiftdeps"
+  }
+}

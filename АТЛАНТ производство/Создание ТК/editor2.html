@@ -1,0 +1,3051 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <title>Редактор схем сборки</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: white;
+    }
+    
+    .screen {
+      display: none !important;
+      width: 100%;
+      height: 100vh;
+      overflow: auto;
+    }
+    
+    .screen.active {
+      display: block !important;
+    }
+    
+    /* Экран 1: Выбор изделия */
+    .products-screen {
+      padding: 20px;
+      display: none; /* По умолчанию скрыт */
+    }
+    
+    .products-screen.active {
+      display: block !important;
+    }
+    
+    .search-section {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    
+    .btn-primary {
+      background-color: #4CAF50;
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background-color: #45a049;
+    }
+    
+    .btn-secondary {
+      background-color: #2196F3;
+      color: white;
+    }
+    
+    .btn-secondary:hover {
+      background-color: #1976D2;
+    }
+    
+    .btn-warning {
+      background-color: #FF9800;
+      color: white;
+    }
+    
+    .btn-warning:hover {
+      background-color: #F57C00;
+    }
+    
+    .btn:disabled {
+      background-color: #cccccc;
+      color: #666666;
+      cursor: not-allowed;
+    }
+    
+    .search-box {
+      flex: 1;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      font-size: 16px;
+      background: white;
+    }
+    
+    .btn-add {
+      width: 50px;
+      height: 50px;
+      border: none;
+      border-radius: 25px;
+      background-color: #4CAF50;
+      color: white;
+      font-size: 24px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.2s;
+    }
+    
+    .btn-add:hover {
+      background-color: #45a049;
+    }
+    
+    .products-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 15px;
+    }
+    
+    .product-card {
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s;
+      cursor: pointer;
+    }
+    
+    .product-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .product-card.selected {
+      border: 3px solid #4CAF50;
+    }
+    
+    .product-photo {
+      width: 100%;
+      height: 150px;
+      background-color: #f0f0f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+    
+    .photo-icons {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      display: flex;
+      gap: 5px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    
+    .product-card:hover .photo-icons {
+      opacity: 1;
+    }
+    
+    .icon-btn {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      transition: transform 0.1s;
+    }
+    
+    .icon-btn:hover {
+      transform: scale(1.1);
+    }
+    
+    .icon-btn.photo {
+      background-color: rgba(33, 150, 243, 0.9);
+      color: white;
+    }
+    
+    .icon-btn.delete {
+      background-color: rgba(244, 67, 54, 0.9);
+      color: white;
+    }
+    
+    .photo-loader {
+      width: 30px;
+      height: 30px;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #4CAF50;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    .photo-loaded {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    .photo-loaded.visible {
+      opacity: 1;
+    }
+    
+    .product-photo img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .product-photo.no-photo {
+      background-color: #e9ecef;
+      color: #6c757d;
+      font-size: 14px;
+    }
+    
+    .product-info {
+      padding: 15px;
+    }
+    
+    .product-code {
+      font-size: 16px;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 5px;
+    }
+    
+    .product-name {
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 5px;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 3px;
+      transition: background-color 0.2s;
+    }
+    
+    .product-name:hover {
+      background-color: #f0f0f0;
+    }
+    
+    .product-name-input {
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 5px;
+      padding: 2px 4px;
+      border: 1px solid #4CAF50;
+      border-radius: 3px;
+      background: white;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    
+    .product-name-loader {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid #4CAF50;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-left: 5px;
+    }
+    
+    .editable {
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 3px;
+      transition: background-color 0.2s;
+    }
+    
+    .editable:hover {
+      background-color: #f0f0f0;
+    }
+    
+    .editable-input {
+      font-size: inherit;
+      color: inherit;
+      margin: 0;
+      padding: 2px 4px;
+      border: 1px solid #4CAF50;
+      border-radius: 3px;
+      background: white;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    
+    /* Экран 2: Редактирование схемы */
+    .editor-screen {
+      display: none; /* По умолчанию скрыт */
+      flex-direction: column;
+      height: 100vh;
+    }
+    
+    .editor-screen.active {
+      display: flex !important;
+    }
+    
+    .editor-header {
+      background: white;
+      padding: 15px 20px;
+      border-bottom: 1px solid #ddd;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .editor-title {
+      font-size: 20px;
+      font-weight: bold;
+    }
+    
+    .editor-controls {
+      display: flex;
+      gap: 10px;
+    }
+    
+    .editor-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      gap: 20px;
+    }
+    
+    .cards-panel {
+      flex: 1;
+      background: none;
+      border-radius: 0;
+      box-shadow: none;
+      overflow: visible;
+      min-height: 400px;
+    }
+    
+    .cards-header {
+      background: #f8f9fa;
+      padding: 15px;
+      border-bottom: 1px solid #ddd;
+      font-weight: bold;
+    }
+    
+    .cards-content {
+      padding: 0;
+      /* max-height и overflow убраны для единого скролла */
+    }
+    
+    .current-node-panel {
+      background: #f8f9fa;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .current-node-content {
+      display: flex;
+      padding: 15px 20px;
+      gap: 20px;
+      align-items: center;
+    }
+    
+    .current-node-photo {
+      width: 160px;
+      height: 120px;
+      background-color: #e9ecef;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+    
+    .current-node-photo img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .current-node-photo.no-photo {
+      color: #6c757d;
+      font-size: 12px;
+    }
+    
+    .current-node-info {
+      flex: 1;
+    }
+    
+    .current-node-code {
+      font-size: 24px;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 8px;
+    }
+    
+    .current-node-name {
+      font-size: 18px;
+      color: #666;
+      margin-bottom: 15px;
+    }
+    
+    .current-node-operation.editable {
+      font-size: 16px;
+      color: #333;
+      padding: 4px;
+      border-radius: 4px;
+      display: block;
+      width: 100%;
+      font-style: normal;
+      margin-bottom: 0;
+    }
+    
+    .current-node-operation-block {
+      background-color: #e3f2fd; /* Light blue */
+      border: 1px solid #bbdefb; /* Slightly darker blue */
+      border-radius: 8px;
+      padding: 10px 15px;
+      margin-left: auto; /* Pushes it to the right */
+      text-align: left;
+      min-width: 250px;
+    }
+
+    .current-node-operation-title {
+      font-size: 12px;
+      font-weight: 500;
+      color: #0d47a1; /* Dark blue */
+      margin-bottom: 4px;
+    }
+    
+    .current-node-breadcrumb {
+      font-size: 14px;
+      color: #666;
+    }
+    
+    .tree-node {
+      margin-bottom: 5px;
+    }
+    
+    .node-item {
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      border: 1px solid transparent;
+    }
+    
+    .node-item:hover {
+      background-color: #f8f9fa;
+    }
+    
+    .node-item.selected {
+      background-color: #e3f2fd;
+      border-color: #2196F3;
+    }
+    
+    .node-item.folder {
+      font-weight: bold;
+      background-color: #fff3e0;
+    }
+    
+    .node-item.folder:hover {
+      background-color: #ffe0b2;
+    }
+    
+    .node-icon {
+      margin-right: 8px;
+      font-size: 16px;
+    }
+    
+    .node-photo {
+      width: 32px;
+      height: 32px;
+      border-radius: 4px;
+      margin-right: 10px;
+      background-color: #f0f0f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    
+    .node-photo img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .node-info {
+      flex: 1;
+    }
+    
+    .node-code {
+      font-weight: bold;
+      font-size: 14px;
+    }
+    
+    .node-name {
+      font-size: 12px;
+      color: #666;
+    }
+    
+    .node-quantity {
+      margin-left: auto;
+      font-size: 12px;
+      color: #666;
+      background-color: #e9ecef;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    
+    .node-children {
+      margin-left: 30px;
+      display: none;
+    }
+    
+    .node-children.expanded {
+      display: block;
+    }
+    
+    .properties-panel {
+      width: 300px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    
+    .properties-header {
+      background: #f8f9fa;
+      padding: 15px;
+      border-bottom: 1px solid #ddd;
+      font-weight: bold;
+    }
+    
+    .properties-content {
+      padding: 15px;
+    }
+    
+    .form-group {
+      margin-bottom: 15px;
+    }
+    
+    .form-label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+      color: #333;
+    }
+    
+    .form-control {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    
+    .form-control:focus {
+      outline: none;
+      border-color: #4CAF50;
+      box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+    }
+    
+    .photo-preview {
+      width: 100%;
+      max-width: 200px;
+      height: 150px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background-color: #f8f9fa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 10px;
+      overflow: hidden;
+    }
+    
+    .photo-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .photo-preview.no-photo {
+      color: #6c757d;
+      font-size: 12px;
+      text-align: center;
+    }
+    
+    /* Модальные окна */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+      z-index: 1000;
+    }
+    
+    .modal.active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .modal-content {
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      max-width: 500px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    
+    .modal-header {
+      margin-bottom: 20px;
+    }
+    
+    .modal-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    
+    .modal-footer {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+    
+    /* Лоадер */
+    .loader {
+      display: none;
+      text-align: center;
+      padding: 40px;
+    }
+    
+    .loader.active {
+      display: block;
+    }
+    
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #3498db;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .add-node-btn {
+      width: 100%;
+      padding: 10px;
+      border: 2px dashed #ccc;
+      background: none;
+      border-radius: 5px;
+      color: #666;
+      cursor: pointer;
+      margin-top: 10px;
+      transition: all 0.2s;
+    }
+    
+    .add-node-btn:hover {
+      border-color: #4CAF50;
+      color: #4CAF50;
+    }
+    
+    .node-actions {
+      margin-left: auto;
+      display: flex;
+      gap: 5px;
+    }
+    
+    .node-action-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 3px;
+      color: #666;
+      font-size: 12px;
+    }
+    
+    .node-action-btn:hover {
+      background-color: #f0f0f0;
+      color: #333;
+    }
+    
+    .breadcrumb {
+      padding: 10px 15px;
+      font-size: 14px;
+      color: #666;
+    }
+    
+    .breadcrumb-link {
+      color: #2196F3;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    
+    .breadcrumb-link:hover {
+      text-decoration: underline;
+    }
+    
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.9);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    
+    .loading-spinner {
+      width: 50px;
+      height: 50px;
+      border: 5px solid #f3f3f3;
+      border-top: 5px solid #4CAF50;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+    
+    .loading-text {
+      font-size: 18px;
+      color: #333;
+      margin-top: 10px;
+    }
+    
+    .error-message {
+      color: #f44336;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #f44336;
+      border-radius: 4px;
+      display: none;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .add-card {
+      border: 2px dashed #ccc;
+      background-color: #f8f9fa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: #666;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .add-card:hover {
+      border-color: #4CAF50;
+      color: #4CAF50;
+      background-color: #f1f8e9;
+    }
+
+    .add-card-content span {
+      font-size: 48px;
+      font-weight: 200;
+      line-height: 1;
+    }
+
+    .add-card-content p {
+      margin: 10px 0 0;
+      font-size: 14px;
+    }
+
+    .small-loader {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid #0d47a1; /* Dark blue to match title */
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+
+    .card-operation-tag {
+      position: absolute;
+      top: 5px;
+      left: 5px;
+      background: rgba(227, 242, 253, 0.9); /* Light blue, semi-transparent */
+      color: #0d47a1; /* Dark blue */
+      border: 1px solid #0d47a1;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px; /* Увеличено с 11px */
+      font-weight: 500;
+      max-width: calc(100% - 12px);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.2;
+    }
+  </style>
+</head>
+<body>
+  <!-- Лоадер -->
+  <div id="loader" class="loader">
+    <div class="spinner"></div>
+    <div>Загрузка данных...</div>
+  </div>
+
+  <!-- Экран 1: Выбор изделия -->
+  <div id="productsScreen" class="screen products-screen">
+    <div class="search-section">
+      <input type="text" class="search-box" id="searchInput" placeholder="Поиск по артикулу или названию..." oninput="filterProducts()">
+      <button class="btn-add" onclick="createNewProduct()" title="Создать изделие">+</button>
+    </div>
+    
+    <div class="products-grid" id="productsGrid">
+      <!-- Продукты будут загружены динамически -->
+    </div>
+  </div>
+
+  <!-- Экран 2: Редактирование схемы -->
+  <div id="editorScreen" class="screen editor-screen">
+    <div class="editor-header">
+      <div>
+        <span class="editor-title" id="editorTitle">Редактирование схемы</span>
+      </div>
+    </div>
+    
+    <div class="editor-content">
+      <!-- Блок текущего узла (только для экрана узлов) -->
+      <div id="currentNodePanel" class="current-node-panel" style="display: none;">
+        <div class="current-node-content">
+          <div class="current-node-photo" id="currentNodePhoto">
+            <div class="photo-loader"></div>
+          </div>
+          <div class="current-node-info">
+            <div class="current-node-code" id="currentNodeCode">Код узла</div>
+            <div class="current-node-name editable" id="currentNodeName" ondblclick="editCurrentNodeName()">Название узла</div>
+            <div class="current-node-breadcrumb" id="currentNodeBreadcrumb">
+              <!-- Хлебные крошки -->
+            </div>
+          </div>
+          <div class="current-node-operation-block">
+            <div class="current-node-operation-title">Операция</div>
+            <div class="current-node-operation editable" id="currentNodeOperation" ondblclick="editCurrentNodeOperation()">
+              <span class="small-loader"></span>Загрузка...
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Поиск для экрана узлов -->
+      <div id="nodesSearchSection" class="search-section" style="display: none;">
+        <input type="text" class="search-box" id="nodesSearchInput" placeholder="Поиск по артикулу или названию..." oninput="filterCards()">
+        <button class="btn-add" onclick="addNewCard()" title="Создать элемент">+</button>
+      </div>
+      
+      <div class="cards-panel">
+        <div class="cards-content" id="cardsContent">
+          <!-- Карточки будут загружены динамически -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальное окно для создания/редактирования изделия -->
+  <div id="productModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="productModalTitle">Создание изделия</h3>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Артикул:</label>
+          <input type="text" class="form-control" id="productCode" placeholder="Введите артикул">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Название:</label>
+          <input type="text" class="form-control" id="productName" placeholder="Введите название">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeProductModal()">Отмена</button>
+        <button class="btn btn-primary" onclick="saveProduct()">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальное окно для добавления/редактирования узла -->
+  <div id="nodeModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="nodeModalTitle">Добавление узла</h3>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Тип:</label>
+          <select class="form-control" id="nodeType" onchange="onNodeTypeChange()">
+            <option value="component">Деталь</option>
+            <option value="operation">Операция</option>
+            <option value="assembly">Узел (сборка)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Артикул/Название:</label>
+          <input type="text" class="form-control" id="nodeCode" placeholder="Введите артикул или название операции">
+        </div>
+        <div class="form-group" id="sourceQuantityGroup">
+          <label class="form-label">Количество берем:</label>
+          <input type="number" class="form-control" id="sourceQuantity" placeholder="1" min="1" step="0.01">
+        </div>
+        <div class="form-group" id="targetQuantityGroup">
+          <label class="form-label">Количество получаем:</label>
+          <input type="number" class="form-control" id="targetQuantity" placeholder="1" min="1" step="0.01">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Название:</label>
+          <input type="text" class="form-control" id="nodeName" placeholder="Название (опционально)">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Артикул фото:</label>
+          <input type="text" class="form-control" id="nodePhotoId" placeholder="Артикул для поиска фото (опционально)">
+        </div>
+        <div class="photo-preview" id="nodePhotoPreview">
+          <span>Нет фото</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeNodeModal()">Отмена</button>
+        <button class="btn btn-primary" onclick="saveNode()">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * Нормализация артикула: добавляет ведущие нули до 4-х знаков, если это число.
+     * @param {string|number} code - Артикул для нормализации.
+     * @returns {string} Нормализованный артикул.
+     */
+    function normalizeCode(code) {
+      if (code === null || code === undefined) return '';
+      const strCode = String(code).trim();
+      // Проверяем, что это строка, состоящая только из цифр, длиной от 1 до 4
+      if (/^\d{1,4}$/.test(strCode)) {
+        return strCode.padStart(4, '0');
+      }
+      return strCode; // Возвращаем как есть для нечисловых артикулов
+    }
+
+    // Глобальные переменные
+    let currentCards = []; // Универсальный массив карточек (изделия или узлы)
+    let currentViewType = 'products'; // 'products' или 'nodes'
+    let currentFilterValue = null; // null для изделий, код изделия для узлов
+    let currentSchema = [];
+    let selectedNode = null;
+    let editorImageCache = {};
+    let productSchemaCache = {};
+    
+    // Кэширование экранов для быстрой навигации
+    let screenCache = {}; // Кэш данных экранов
+    let searchCache = {}; // Кэш поисковых запросов
+
+    // Добавляем кэш для информации об узлах
+    let nodeInfoCache = {};
+
+    function showError(message) {
+      const errorElement = document.getElementById('errorMessage');
+      errorElement.textContent = message;
+      errorElement.style.display = 'block';
+      setTimeout(() => {
+        errorElement.style.display = 'none';
+      }, 5000);
+    }
+
+    function showLoading(show, message = 'Загрузка данных...') {
+      const overlay = document.getElementById('loadingOverlay');
+      const loadingText = overlay.querySelector('.loading-text');
+      if (show) {
+        loadingText.textContent = message;
+        overlay.style.display = 'flex';
+      } else {
+        overlay.style.display = 'none';
+      }
+    }
+
+    function initializeEditor() {
+      showLoading(true, 'Инициализация редактора...');
+      
+      // Отменяем предыдущий таймаут если есть
+      if (initializationTimeout) {
+        clearTimeout(initializationTimeout);
+      }
+      
+      // Устанавливаем таймаут на инициализацию
+      initializationTimeout = setTimeout(() => {
+        if (loadingRetries < MAX_RETRIES) {
+          loadingRetries++;
+          showError('Превышено время ожидания. Повторная попытка...');
+          initializeEditor();
+        } else {
+          showError('Не удалось загрузить редактор. Пожалуйста, обновите страницу.');
+          showLoading(false);
+        }
+      }, 30000);
+      
+      // Инициализируем редактор
+      google.script.run
+        .withSuccessHandler(function(products) {
+          clearTimeout(initializationTimeout);
+          loadingRetries = 0;
+          
+          if (!products || products.length === 0) {
+            showError('Нет доступных изделий');
+            showLoading(false);
+            return;
+          }
+          
+          // Кэшируем продукты
+          screenCache['products_root'] = {
+            cards: products,
+            timestamp: Date.now()
+          };
+          
+          // Показываем список продуктов
+          renderProducts(products);
+          showLoading(false);
+        })
+        .withFailureHandler(function(error) {
+          clearTimeout(initializationTimeout);
+          
+          if (loadingRetries < MAX_RETRIES) {
+            loadingRetries++;
+            showError('Ошибка загрузки. Повторная попытка...');
+            setTimeout(initializeEditor, RETRY_DELAY);
+          } else {
+            showError('Не удалось загрузить данные. Пожалуйста, обновите страницу.');
+            showLoading(false);
+          }
+        })
+        .getProductsList();
+    }
+
+    // Запускаем инициализацию при загрузке страницы
+    window.onload = function() {
+      // Принудительно скрываем все экраны
+      document.getElementById('editorScreen').classList.remove('active');
+      document.getElementById('editorScreen').style.display = 'none';
+      document.getElementById('loader').classList.remove('active');
+      document.getElementById('loader').style.display = 'none';
+
+      // Показываем только экран со списком изделий
+      document.getElementById('productsScreen').classList.add('active');
+      document.getElementById('productsScreen').style.display = 'block';
+
+      // Инициализируем экран изделий
+      initializeScreen('products', null);
+    };
+
+    // === УПРАВЛЕНИЕ ЭКРАНАМИ ===
+
+    // Универсальная функция инициализации экрана
+    function initializeScreen(viewType, filterValue) {
+      currentViewType = viewType;
+      currentFilterValue = filterValue;
+      
+      console.log(`Инициализация экрана: ${viewType}, фильтр: ${filterValue}`);
+      
+      // Очищаем состояние загрузки фото если переключаемся между типами экранов
+      if (viewType === 'products') {
+        loadingPhotos.clear();
+      }
+      
+      // Определяем контейнер для рендеринга
+      let container;
+      if (viewType === 'products') {
+        container = document.getElementById('productsGrid');
+        // Скрываем элементы экрана узлов
+        document.getElementById('currentNodePanel').style.display = 'none';
+        document.getElementById('nodesSearchSection').style.display = 'none';
+      } else {
+        container = document.getElementById('cardsContent');
+        // Показываем/скрываем нужные элементы для экрана узлов
+        document.querySelector('.editor-header').style.display = 'none';
+        document.getElementById('currentNodePanel').style.display = 'block';
+        document.getElementById('nodesSearchSection').style.display = 'none';
+        // Обновляем информацию о текущем узле только если блок еще не заполнен
+        const currentNodeCode = document.getElementById('currentNodeCode').textContent;
+        if (!currentNodeCode || currentNodeCode === 'Код узла') {
+          updateCurrentNodeInfo();
+        }
+      }
+      
+      if (!container) {
+        console.error('Контейнер не найден');
+        return;
+      }
+      
+      // Генерируем ключ кэша
+      const cacheKey = `${viewType}_${filterValue || 'root'}`;
+      
+      // Проверяем кэш
+      if (screenCache[cacheKey]) {
+        console.log(`Загружаем из кэша: ${cacheKey}`);
+        const cachedData = screenCache[cacheKey];
+        currentCards = cachedData.cards;
+        renderCards(container, cachedData.cards);
+        
+        // Обновляем все фото сразу из кэша (без загрузки)
+        cachedData.cards.forEach(card => {
+          const photoId = card.photoId || card.code;
+          if (editorImageCache[photoId]) {
+            updateCardPhotoDisplay(card.code, editorImageCache[photoId], card.hasChildren);
+          }
+        });
+        
+        // Если в кэше пустые данные, сразу показываем сообщение
+        if (cachedData.cards.length === 0) {
+          if (viewType === 'products') {
+            container.innerHTML = `
+              <div style="text-align: center; padding: 60px; color: #666;">
+                <div style="font-size: 48px; margin-bottom: 20px;">📦</div>
+                <h3>Изделия не найдены</h3>
+                <p>Создайте первое изделие, нажав на кнопку "+" справа от поиска</p>
+              </div>
+            `;
+          } else {
+            container.innerHTML = `
+              <div style="text-align: center; padding: 60px; color: #666;">
+                <div style="font-size: 48px; margin-bottom: 20px;">🔧</div>
+                <h3>Элементы не найдены</h3>
+                <p>В данном изделии пока нет элементов. Добавьте первый элемент, нажав кнопку ниже.</p>
+                <button class="btn btn-primary" onclick="addNewCard()" style="margin-top: 20px;">+ Добавить элемент</button>
+              </div>
+            `;
+          }
+          updateSearchPlaceholder();
+          return;
+        }
+        
+        // Загружаем фото только для карточек которых реально нет в кэше
+        const cardsNeedingPhotos = cachedData.cards.filter(card => {
+          const photoId = card.photoId || card.code;
+          return !editorImageCache[photoId] && !loadingPhotos.has(photoId);
+        });
+        
+        if (cardsNeedingPhotos.length > 0) {
+          console.log(`Догружаем ${cardsNeedingPhotos.length} фото из ${cachedData.cards.length}`);
+          loadCardsPhotosProgressively(cardsNeedingPhotos);
+        }
+        
+        updateSearchPlaceholder();
+        return;
+      }
+      
+      // Показываем скелетоны
+      renderSkeletons(container);
+      
+      // Загружаем данные
+      const runner = google.script.run
+        .withSuccessHandler(function(cards) {
+          console.log(`Получено ${cards.length} карточек типа ${viewType}`);
+          currentCards = cards;
+          
+          // Сохраняем в кэш
+          screenCache[cacheKey] = {
+            cards: cards,
+            timestamp: Date.now()
+          };
+          
+          // Если карточек нет, показываем сообщение
+          if (cards.length === 0) {
+            if (viewType === 'products') {
+              container.innerHTML = `
+                <div style="text-align: center; padding: 60px; color: #666;">
+                  <div style="font-size: 48px; margin-bottom: 20px;">📦</div>
+                  <h3>Изделия не найдены</h3>
+                  <p>Создайте первое изделие, нажав на кнопку "+" справа от поиска</p>
+                </div>
+              `;
+            } else {
+              container.innerHTML = `
+                <div style="text-align: center; padding: 60px; color: #666;">
+                  <div style="font-size: 48px; margin-bottom: 20px;">🔧</div>
+                  <h3>Элементы не найдены</h3>
+                  <p>В данном изделии пока нет элементов. Добавьте первый элемент, нажав кнопку ниже.</p>
+                  <button class="btn btn-primary" onclick="addNewCard()" style="margin-top: 20px;">+ Добавить элемент</button>
+                </div>
+              `;
+            }
+            updateSearchPlaceholder();
+            return;
+          }
+          
+          renderCards(container, cards);
+          
+          // Начинаем постепенную загрузку фото
+          loadCardsPhotosProgressively(cards);
+          
+          // Обновляем плейсхолдер поиска
+          updateSearchPlaceholder();
+        })
+        .withFailureHandler(function(error) {
+          console.error('Ошибка загрузки карточек:', error);
+          container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #f44336;">
+              <p>Ошибка загрузки: ${error.message}</p>
+              <button class="btn btn-primary" onclick="initializeScreen('${viewType}', '${filterValue}')">Повторить</button>
+            </div>
+          `;
+        });
+
+      if (viewType === 'nodes') {
+        const rootCode = getRootProductCode();
+        console.log(`Запрос узлов для ${filterValue} в контексте ${rootCode}`);
+        runner.getCardsFast(viewType, filterValue, rootCode);
+      } else {
+        runner.getCardsFast(viewType, filterValue, null);
+      }
+    }
+
+    // Универсальная функция рендеринга скелетонов
+    function renderSkeletons(container) {
+      if (currentViewType === 'products') {
+        container.innerHTML = Array(3).fill(0).map(() => createCardSkeleton()).join('');
+      } else {
+        container.innerHTML = `
+          <div class="products-grid" style="padding: 15px;">
+            ${Array(2).fill(0).map(() => createCardSkeleton()).join('')}
+          </div>
+          <div style="padding: 15px;">
+            <button class="add-node-btn" onclick="addNewCard()">+ Добавить элемент</button>
+          </div>
+        `;
+      }
+    }
+    
+    // Универсальная функция рендеринга карточек
+    function renderCards(container, cards) {
+      if (currentViewType === 'products') {
+        container.innerHTML = cards.map(card => createUniversalCard(card)).join('');
+      } else {
+        const cardsHtml = cards.map(card => createUniversalCard(card)).join('');
+        // Для экрана узлов используем такую же сетку как для продуктов, без лишних отступов
+        container.innerHTML = `
+          <div class="products-grid">
+            ${cardsHtml}
+            <div class="product-card add-card" onclick="addNewCard()">
+              <div class="add-card-content">
+                <span>+</span>
+                <p>Добавить элемент</p>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    function goToProductsScreen() {
+      // Явно скрываем экран редактора
+      document.getElementById('editorScreen').classList.remove('active');
+      document.getElementById('editorScreen').style.display = 'none';
+      
+      // Показываем экран со списком изделий
+      document.getElementById('productsScreen').classList.add('active');
+      document.getElementById('productsScreen').style.display = 'block';
+      
+      // Возвращаем исходный заголовок
+      const modalTitle = document.querySelector('.modal-dialog .modal-title') || document.querySelector('title');
+      if (modalTitle) {
+        modalTitle.textContent = 'Редактор схем сборки';
+      }
+      
+      // Сбрасываем состояние поиска
+      const searchInput = document.getElementById('searchInput');
+      if (searchInput) {
+        searchInput.value = '';
+      }
+      
+      // Инициализируем экран изделий
+      initializeScreen('products', null);
+      
+      currentSchema = [];
+      currentLevel = [];
+      clearSelection();
+    }
+
+    // Универсальная функция создания скелета карточки
+    function createCardSkeleton() {
+      return `
+        <div class="product-card">
+          <div class="product-photo">
+            <div class="photo-loader"></div>
+          </div>
+          <div class="product-info">
+            <div class="product-code">Загрузка...</div>
+            <div class="product-name">Поиск...</div>
+          </div>
+        </div>
+      `;
+    }
+    
+    // Универсальная функция создания карточки
+    function createUniversalCard(card) {
+      const hasChildrenIcon = card.hasChildren ? '📁' : '📄';
+      const quantityText = card.type === 'node' && !card.isOperation ? `${card.quantity} шт` : '';
+      const photoId = card.photoId || card.code;
+      
+      let photoContent = '';
+      let photoClasses = 'product-photo';
+
+      // Проверяем кэш ПРИ СОЗДАНИИ карточки
+      if (photoId in editorImageCache) {
+        const cachedImage = editorImageCache[photoId];
+        if (cachedImage) {
+          photoContent = `<img class="photo-loaded visible" src="${cachedImage}" alt="${card.code}">`;
+        } else {
+          photoContent = `<span>Нет фото</span>`;
+          photoClasses += ' no-photo';
+        }
+      } else {
+        // Если в кэше нет - показываем лоадер
+        photoContent = `<div class="photo-loader"></div>`;
+      }
+      
+      let overlayContent = '';
+      if (card.type === 'node' && card.hasChildren) {
+        overlayContent = `<div class="card-operation-tag" id="operation-tag-${card.code}">загрузка...</div>`;
+      }
+      
+      return `
+        <div class="product-card" data-card-code="${card.code}" data-card-type="${card.type}"
+             ondblclick="handleCardDoubleClick('${card.code}', '${card.type}')" 
+             onclick="handleCardClick('${card.code}', '${card.type}')">
+          <div class="${photoClasses}" id="photo-${card.code}">
+            ${photoContent}
+            ${overlayContent}
+            <div class="photo-icons">
+              ${card.type === 'node' ? `<button class="icon-btn photo" onclick="event.stopPropagation(); editPhotoId('${card.code}')" title="Редактировать фото">📷</button>` : ''}
+              <button class="icon-btn delete" onclick="event.stopPropagation(); deleteCard('${card.code}', '${card.type}')" title="Удалить">🗑️</button>
+            </div>
+          </div>
+          <div class="product-info">
+            <div class="product-code">${card.code}</div>
+            <div class="product-name editable" ondblclick="event.stopPropagation(); editCardName('${card.code}', this)">${card.name}</div>
+            ${quantityText ? `<div class="editable" style="font-size: 12px; color: #666; margin-top: 5px;" ondblclick="event.stopPropagation(); editCardQuantity('${card.code}', this)">${quantityText}</div>` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    function goToEditorScreen(card) {
+      // Явно скрываем экран списка изделий
+      document.getElementById('productsScreen').classList.remove('active');
+      document.getElementById('productsScreen').style.display = 'none';
+
+      // Показываем экран редактора
+      document.getElementById('editorScreen').classList.add('active');
+      document.getElementById('editorScreen').style.display = 'block';
+
+      // Обновляем заголовок попапа
+      const modalTitle = document.querySelector('.modal-dialog .modal-title') || document.querySelector('title');
+      if (modalTitle) {
+        modalTitle.textContent = `${card.code} - ${card.name}`;
+      }
+      document.getElementById('editorTitle').textContent = `${card.code} - ${card.name}`;
+
+      // Сбрасываем навигацию
+      currentLevel = [];
+      currentFilterValue = card.code;
+
+      // Аккуратно обновляем данные карточки в кеше, не затирая операцию
+      if (!nodeInfoCache[card.code]) {
+        nodeInfoCache[card.code] = {};
+      }
+      Object.assign(nodeInfoCache[card.code], {
+        code: card.code,
+        name: card.name,
+        photoId: card.photoId || card.code
+      });
+
+      if (card.photoUrl) {
+        editorImageCache[card.photoId || card.code] = card.photoUrl;
+      }
+
+      // Проверяем, загружена ли уже схема для этого изделия
+      if (productSchemaCache[card.code]) {
+        console.log(`Схема для ${card.code} уже в кэше.`);
+        currentSchema = productSchemaCache[card.code]; // Восстанавливаем схему
+        updateCurrentNodeInfoFromCard(card, false);    // Обновляем инфо-блок без лоадера
+        initializeScreen('nodes', card.code);
+        setTimeout(updateOperationTags, 50);          // Обновляем теги на карточках
+        return; // Завершаем, т.к. загружать не нужно
+      }
+
+      // Если схемы в кэше нет, показываем лоадер и загружаем данные
+      updateCurrentNodeInfoFromCard(card, true); // Показываем лоадер для операции
+      initializeScreen('nodes', card.code);
+
+      // В ФОНЕ загружаем полную схему для будущего редактирования
+      google.script.run
+        .withSuccessHandler(function(result) {
+          console.log('Полная схема загружена в фоне.');
+          currentSchema = result.schema;
+          productSchemaCache[card.code] = result.schema; // КЕШИРУЕМ СХЕМУ
+          
+          // Дополняем кэш изображений из полной схемы
+          editorImageCache = { ...editorImageCache, ...result.images };
+
+          // Кешируем все операции из схемы
+          if (currentSchema) {
+            currentSchema.forEach(item => {
+              if (item.target) {
+                // Если для узла еще нет записи в кеше, создаем ее
+                if (!nodeInfoCache[item.target]) {
+                  nodeInfoCache[item.target] = { code: item.target, name: item.targetName };
+                }
+                // Записываем операцию в кеш
+                nodeInfoCache[item.target].operation = item.operation;
+              }
+            });
+          }
+
+          // Теперь, когда кеш заполнен, обновляем узел (isSchemaLoading = false)
+          updateCurrentNodeInfoFromCard(card, false);
+          // И обновляем все теги на карточках
+          updateOperationTags();
+        })
+        .withFailureHandler(function(error) {
+          console.error('Ошибка фоновой загрузки полной схемы:', error);
+          const operationElement = document.getElementById('currentNodeOperation');
+          if (operationElement) {
+            operationElement.textContent = 'Ошибка загрузки';
+            operationElement.classList.remove('editable');
+            operationElement.ondblclick = null;
+          }
+        })
+        .loadFullSchemaForProduct(card.code);
+    }
+
+    // === УНИВЕРСАЛЬНЫЕ ОБРАБОТЧИКИ СОБЫТИЙ ===
+
+    // Обработчик двойного клика по карточке
+    function handleCardDoubleClick(cardCode, cardType) {
+      if (cardType === 'product') {
+        const card = currentCards.find(c => c.code === cardCode);
+        if (card) {
+          goToEditorScreen(card);
+        }
+      } else if (cardType === 'node') {
+        const card = currentCards.find(c => c.code === cardCode);
+        if (card && card.hasChildren) {
+          // Ищем в кэше текущего уровня информацию о родительском узле
+          const parentCard = currentCards.find(c => c.code === currentFilterValue);
+          // Обновляем хлебные крошки, добавляя текущий узел в путь, только если он не корневой
+          if (currentFilterValue !== getRootProductCode()) {
+            currentLevel.push({
+              code: currentFilterValue,
+              name: (parentCard ? parentCard.name : document.getElementById('currentNodeName').textContent) || currentFilterValue,
+              card: parentCard || { code: currentFilterValue, name: document.getElementById('currentNodeName').textContent }
+            });
+          }
+          currentFilterValue = cardCode;
+          
+          // МГНОВЕННО обновляем блок текущего узла из данных карточки
+          updateCurrentNodeInfoFromCard(card);
+          
+          // Переходим в дочерний узел
+          initializeScreen('nodes', cardCode);
+        }
+      }
+    }
+    
+    // Обработчик клика по карточке
+    function handleCardClick(cardCode, cardType) {
+      // Пока ничего не делаем при обычном клике
+    }
+
+    // Редактирование названия карточки по двойному клику
+    function editCardName(cardCode, nameElement) {
+      const currentName = nameElement.textContent;
+      const input = document.createElement('input');
+      input.className = 'editable-input';
+      input.value = currentName;
+      input.maxLength = 100;
+      
+      nameElement.parentNode.replaceChild(input, nameElement);
+      input.focus();
+      input.select();
+      
+      const saveEdit = () => {
+        const newName = input.value.trim();
+        if (newName && newName !== currentName) {
+          // Показываем лоадер
+          const loaderDiv = document.createElement('div');
+          loaderDiv.className = 'product-name editable';
+          loaderDiv.innerHTML = newName + '<span class="product-name-loader"></span>';
+          loaderDiv.ondblclick = (e) => { e.stopPropagation(); editCardName(cardCode, loaderDiv); };
+          input.parentNode.replaceChild(loaderDiv, input);
+          
+          // Сохраняем на сервере
+          if (currentViewType === 'products') {
+            google.script.run
+              .withSuccessHandler(function(result) {
+                handleNameUpdateResult(result, cardCode, newName, currentName, loaderDiv);
+              })
+              .withFailureHandler(function(error) {
+                handleNameUpdateError(error, cardCode, currentName, loaderDiv);
+              })
+              .renameProduct(cardCode, newName);
+          } else {
+            // Для узлов обновляем схему
+            updateNodeNameInSchema(cardCode, newName);
+            handleNameUpdateResult({success: true}, cardCode, newName, currentName, loaderDiv);
+          }
+        } else {
+          // Отмена редактирования
+          restoreNameElement(input, cardCode, currentName);
+        }
+      };
+      
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          saveEdit();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          restoreNameElement(input, cardCode, currentName);
+        }
+      });
+      
+      input.addEventListener('blur', saveEdit);
+    }
+    
+    // Редактирование количества узла по двойному клику
+    function editCardQuantity(cardCode, quantityElement) {
+      const currentQuantity = quantityElement.textContent.replace(' шт', '');
+      const input = document.createElement('input');
+      input.className = 'editable-input';
+      input.type = 'number';
+      input.value = currentQuantity;
+      input.min = '0.01';
+      input.step = '0.01';
+      
+      quantityElement.parentNode.replaceChild(input, quantityElement);
+      input.focus();
+      input.select();
+      
+      const saveEdit = () => {
+        const newQuantity = parseFloat(input.value);
+        if (newQuantity && newQuantity !== parseFloat(currentQuantity)) {
+          // Обновляем схему
+          updateNodeQuantityInSchema(cardCode, newQuantity);
+          
+          // Восстанавливаем элемент
+          const newElement = document.createElement('div');
+          newElement.className = 'editable';
+          newElement.style.cssText = 'font-size: 12px; color: #666; margin-top: 5px;';
+          newElement.textContent = `${newQuantity} шт`;
+          newElement.ondblclick = (e) => { e.stopPropagation(); editCardQuantity(cardCode, newElement); };
+          input.parentNode.replaceChild(newElement, input);
+          
+          // Обновляем в массиве карточек
+          const card = currentCards.find(c => c.code === cardCode);
+          if (card) {
+            card.quantity = newQuantity;
+          }
+          
+          autoSaveSchema();
+        } else {
+          // Отмена редактирования
+          restoreQuantityElement(input, cardCode, currentQuantity);
+        }
+      };
+      
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          saveEdit();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          restoreQuantityElement(input, cardCode, currentQuantity);
+        }
+      });
+      
+      input.addEventListener('blur', saveEdit);
+    }
+
+    // Вспомогательные функции для редактирования
+    function handleNameUpdateResult(result, cardCode, newName, currentName, loaderDiv) {
+      if (result.success) {
+        // Обновляем в кэше
+        const card = currentCards.find(c => c.code === cardCode);
+        if (card) {
+          card.name = newName;
+        }
+        
+        // Очищаем кэш если это изделие
+        if (currentViewType === 'products') {
+          invalidateCache('products', null);
+        }
+        
+        // Возвращаем обычный div
+        restoreNameElement(loaderDiv, cardCode, newName);
+      } else {
+        alert('Ошибка переименования: ' + result.error);
+        restoreNameElement(loaderDiv, cardCode, currentName);
+      }
+    }
+    
+    function handleNameUpdateError(error, cardCode, currentName, loaderDiv) {
+      alert('Ошибка: ' + error.message);
+      restoreNameElement(loaderDiv, cardCode, currentName);
+    }
+    
+    function restoreNameElement(inputOrLoader, cardCode, name) {
+      const nameDiv = document.createElement('div');
+      nameDiv.className = 'product-name editable';
+      nameDiv.ondblclick = (e) => { e.stopPropagation(); editCardName(cardCode, nameDiv); };
+      nameDiv.textContent = name;
+      inputOrLoader.parentNode.replaceChild(nameDiv, inputOrLoader);
+    }
+    
+    function restoreQuantityElement(input, cardCode, quantity) {
+      const quantityDiv = document.createElement('div');
+      quantityDiv.className = 'editable';
+      quantityDiv.style.cssText = 'font-size: 12px; color: #666; margin-top: 5px;';
+      quantityDiv.textContent = `${quantity} шт`;
+      quantityDiv.ondblclick = (e) => { e.stopPropagation(); editCardQuantity(cardCode, quantityDiv); };
+      input.parentNode.replaceChild(quantityDiv, input);
+    }
+    
+    // Редактирование артикула фото
+    function editPhotoId(cardCode) {
+      const card = currentCards.find(c => c.code === cardCode);
+      if (!card) return;
+      
+      const currentPhotoId = card.photoId || cardCode;
+      const newPhotoId = prompt('Введите артикул для поиска фото:', currentPhotoId);
+      
+      if (newPhotoId !== null && newPhotoId !== currentPhotoId) {
+        // Обновляем в схеме
+        updateNodePhotoInSchema(cardCode, newPhotoId);
+        
+        // Обновляем в кэше карточек
+        card.photoId = newPhotoId;
+        
+        // Загружаем новое фото
+        loadSingleCardPhoto(card);
+        
+        autoSaveSchema();
+      }
+    }
+    
+    // Удаление карточки
+    function deleteCard(cardCode, cardType) {
+      const card = currentCards.find(c => c.code === cardCode);
+      if (!card) return;
+      
+      const confirmMessage = cardType === 'product' 
+        ? `Удалить изделие "${cardCode}"?\nЭто удалит всю схему сборки изделия!`
+        : `Удалить элемент "${cardCode}"?\nЭто удалит элемент и все его дочерние элементы!`;
+      
+      if (confirm(confirmMessage)) {
+        if (cardType === 'product') {
+          // Удаляем изделие
+          google.script.run
+            .withSuccessHandler(function(result) {
+              if (result.success) {
+                // Очищаем кэш продуктов
+                invalidateCache('products', null);
+                initializeScreen('products', null); // Перезагружаем
+              } else {
+                alert('Ошибка удаления: ' + result.error);
+              }
+            })
+            .withFailureHandler(function(error) {
+              alert('Ошибка: ' + error.message);
+            })
+            .deleteProduct(cardCode);
+        } else {
+          // Удаляем узел из схемы
+          deleteNodeRecursive(cardCode);
+          autoSaveSchema();
+          // Очищаем кэш текущего уровня
+          invalidateCache('nodes', currentFilterValue);
+          initializeScreen('nodes', currentFilterValue); // Перезагружаем
+        }
+      }
+    }
+
+    function loadProducts() {
+      console.log('Перезагрузка изделий...');
+      invalidateCache('products', null);
+      initializeScreen('products', null);
+    }
+
+    function renderProducts(products) {
+      const grid = document.getElementById('productsGrid');
+      grid.innerHTML = '';
+      
+      products.forEach(product => {
+        const card = createProductCard(product);
+        grid.appendChild(card);
+      });
+      
+      // Обновляем плейсхолдер поиска с количеством
+      updateSearchPlaceholder();
+    }
+    
+    function updateSearchPlaceholder() {
+      let searchInput;
+      if (currentViewType === 'products') {
+        searchInput = document.getElementById('searchInput');
+      } else {
+        searchInput = document.getElementById('nodesSearchInput');
+      }
+      
+      if (!searchInput) return;
+      
+      const totalCount = currentCards.length;
+      const visibleCount = document.querySelectorAll('.product-card').length;
+      const itemType = currentViewType === 'products' ? 'изделий' : 'элементов';
+      
+      if (totalCount === visibleCount) {
+        searchInput.placeholder = `Поиск по артикулу или названию из ${totalCount} ${itemType}...`;
+      } else {
+        searchInput.placeholder = `Поиск по артикулу или названию (показано ${visibleCount} из ${totalCount})...`;
+      }
+    }
+    
+    // Функция для очистки кэша при изменениях
+    function invalidateCache(viewType, filterValue) {
+      const cacheKey = `${viewType}_${filterValue || 'root'}`;
+      delete screenCache[cacheKey];
+      
+      // Также очищаем кэш родительских элементов при изменении дочерних
+      if (filterValue) {
+        // Очищаем кэш всех уровней которые могут содержать этот элемент
+        Object.keys(screenCache).forEach(key => {
+          if (key.startsWith('nodes_') && key !== cacheKey) {
+            delete screenCache[key];
+          }
+        });
+      }
+    }
+    
+    // Функции для работы со схемой
+    function updateNodeNameInSchema(cardCode, newName) {
+      if (!currentSchema) return;
+      
+      currentSchema.forEach(item => {
+        if (item.source === cardCode && item.target === currentFilterValue) {
+          item.sourceName = newName;
+        }
+      });
+    }
+    
+    function updateNodeQuantityInSchema(cardCode, newQuantity) {
+      if (!currentSchema) return;
+      
+      currentSchema.forEach(item => {
+        if (item.source === cardCode && item.target === currentFilterValue) {
+          item.sourceQuantity = newQuantity;
+        }
+      });
+    }
+    
+    function updateNodePhotoInSchema(cardCode, newPhotoId) {
+      if (!currentSchema) return;
+      
+      currentSchema.forEach(item => {
+        if (item.source === cardCode && item.target === currentFilterValue) {
+          item.sourcePhotoId = newPhotoId;
+        }
+      });
+    }
+    
+    // Добавление нового элемента
+    function addNewCard() {
+      if (currentViewType === 'products') {
+        createNewProduct();
+      } else {
+        addNewNode();
+      }
+    }
+    
+    function addNewNode() {
+      selectedNode = { type: 'new', parent: currentFilterValue };
+      openNodeModal('Добавление элемента');
+    }
+
+    function createProductCard(product) {
+      const card = document.createElement('div');
+      card.className = 'product-card';
+      card.ondblclick = () => goToEditorScreen(product);
+      
+      // Получаем фото для изделия
+      const photoUrl = getImageFromCache(product.photoId || product.code);
+      
+      card.innerHTML = `
+        <div class="product-photo ${!photoUrl ? 'no-photo' : ''}">
+          ${photoUrl ? `<img src="${photoUrl}" alt="${product.code}">` : 'Нет фото'}
+        </div>
+        <div class="product-info">
+          <div class="product-code">${product.code}</div>
+          <div class="product-name" ondblclick="event.stopPropagation(); startNameEdit('${product.code}', this)">${product.name || 'Без названия'}</div>
+        </div>
+      `;
+      
+      return card;
+    }
+    
+    function createProductCardFast(product) {
+      const card = document.createElement('div');
+      card.className = 'product-card';
+      card.setAttribute('data-product-code', product.code);
+      card.ondblclick = () => goToEditorScreen(product);
+      
+      card.innerHTML = `
+        <div class="product-photo" id="photo-${product.code}">
+          <div class="photo-loader"></div>
+        </div>
+        <div class="product-info">
+          <div class="product-code">${product.code}</div>
+          <div class="product-name" ondblclick="event.stopPropagation(); startNameEdit('${product.code}', this)">${product.name || 'Без названия'}</div>
+        </div>
+      `;
+      
+      return card;
+    }
+    
+    function renderProductsFast(products) {
+      const grid = document.getElementById('productsGrid');
+      grid.innerHTML = '';
+      
+      products.forEach(product => {
+        const card = createProductCardFast(product);
+        grid.appendChild(card);
+      });
+      
+      // Обновляем плейсхолдер поиска с количеством
+      updateSearchPlaceholder();
+    }
+    
+    function loadPhotosProgressively() {
+      const photosToLoad = currentProducts.filter(p => !editorImageCache[p.photoId]);
+      console.log(`Начинаем загрузку ${photosToLoad.length} фото...`);
+      
+      // Загружаем фото по одному с задержкой
+      photosToLoad.forEach((product, index) => {
+        setTimeout(() => {
+          loadSingleProductPhoto(product);
+        }, index * 100); // Задержка 100мс между загрузками
+      });
+    }
+    
+    // Объект для отслеживания загружаемых фото
+    const loadingPhotos = new Set();
+    
+    function loadSingleCardPhoto(card) {
+      const photoId = card.photoId || card.code;
+      
+      // Если фото уже в кэше (или известно, что его нет), используем это знание
+      if (photoId in editorImageCache) {
+        updateCardPhotoDisplay(card.code, editorImageCache[photoId], card.hasChildren);
+        return;
+      }
+      
+      // Если фото уже загружается, не запускаем повторную загрузку
+      if (loadingPhotos.has(photoId)) {
+        // Но все равно обновляем отображение если в кэше уже есть
+        setTimeout(() => {
+          if (photoId in editorImageCache) {
+            updateCardPhotoDisplay(card.code, editorImageCache[photoId], card.hasChildren);
+          }
+        }, 100);
+        return;
+      }
+      
+      console.log(`Загружаем фото для ${card.code} (photoId: ${photoId})`);
+      loadingPhotos.add(photoId);
+      
+      // Определяем контекст для поиска фото
+      // Если карточка - это узел ('node'), ищем в папке изделия.
+      // Иначе (для карточки 'product') ищем в корневой папке.
+      const productCodeContext = card.type === 'node' ? getRootProductCode() : null;
+      
+      google.script.run
+        .withSuccessHandler(function(imageData) {
+          loadingPhotos.delete(photoId);
+          
+          // Кэшируем результат: imageData (если есть) или null (если фото нет)
+          editorImageCache[photoId] = imageData;
+          
+          // Обновляем все карточки с этим photoId
+          currentCards.forEach(c => {
+            if ((c.photoId || c.code) === photoId) {
+              updateCardPhotoDisplay(c.code, imageData, c.hasChildren);
+            }
+          });
+        })
+        .withFailureHandler(function(error) {
+          loadingPhotos.delete(photoId);
+          console.error(`Ошибка загрузки фото ${photoId}:`, error);
+          // Кэшируем ошибку как отсутствие фото, чтобы не пробовать снова
+          editorImageCache[photoId] = null;
+          updateCardPhotoDisplay(card.code, null, card.hasChildren);
+        })
+        .getProductPhotoBase64(photoId, productCodeContext);
+    }
+    
+    function updateProductPhoto(productCode, imageData) {
+      const photoContainer = document.getElementById(`photo-${productCode}`);
+      if (!photoContainer) return;
+      
+      if (imageData) {
+        photoContainer.innerHTML = `<img class="photo-loaded visible" src="${imageData}" alt="${productCode}">`;
+      } else {
+        photoContainer.innerHTML = '<span>Нет фото</span>';
+        photoContainer.classList.add('no-photo');
+      }
+    }
+
+    // Функция для начала редактирования названия
+    function startNameEdit(productCode, nameElement) {
+      const currentName = nameElement.textContent;
+      const input = document.createElement('input');
+      input.className = 'product-name-input';
+      input.value = currentName;
+      input.maxLength = 100;
+      
+      // Заменяем div на input
+      nameElement.parentNode.replaceChild(input, nameElement);
+      input.focus();
+      input.select();
+      
+      // Обработчик сохранения
+      const saveEdit = () => {
+        const newName = input.value.trim();
+        if (newName && newName !== currentName) {
+          // Показываем лоадер
+          const loaderDiv = document.createElement('div');
+          loaderDiv.className = 'product-name editable';
+          loaderDiv.innerHTML = newName + '<span class="product-name-loader"></span>';
+          input.parentNode.replaceChild(loaderDiv, input);
+          
+          // Сохраняем на сервере
+          if (currentViewType === 'products') {
+            google.script.run
+              .withSuccessHandler(function(result) {
+                if (result.success) {
+                  // Обновляем в кэше
+                  const product = currentProducts.find(p => p.code === productCode);
+                  if (product) {
+                    product.name = newName;
+                  }
+                  // Возвращаем обычный div
+                  const newNameDiv = document.createElement('div');
+                  newNameDiv.className = 'product-name';
+                  newNameDiv.ondblclick = (e) => { e.stopPropagation(); startNameEdit(productCode, newNameDiv); };
+                  newNameDiv.textContent = newName;
+                  loaderDiv.parentNode.replaceChild(newNameDiv, loaderDiv);
+                } else {
+                  alert('Ошибка переименования: ' + result.error);
+                  // Возвращаем старое название
+                  const originalDiv = document.createElement('div');
+                  originalDiv.className = 'product-name';
+                  originalDiv.ondblclick = (e) => { e.stopPropagation(); startNameEdit(productCode, originalDiv); };
+                  originalDiv.textContent = currentName;
+                  loaderDiv.parentNode.replaceChild(originalDiv, loaderDiv);
+                }
+              })
+              .withFailureHandler(function(error) {
+                alert('Ошибка: ' + error.message);
+                // Возвращаем старое название
+                const originalDiv = document.createElement('div');
+                originalDiv.className = 'product-name';
+                originalDiv.ondblclick = (e) => { e.stopPropagation(); startNameEdit(productCode, originalDiv); };
+                originalDiv.textContent = currentName;
+                loaderDiv.parentNode.replaceChild(originalDiv, loaderDiv);
+              })
+              .renameProduct(productCode, newName);
+          } else {
+            // Для узлов обновляем схему
+            updateNodeNameInSchema(cardCode, newName);
+            handleNameUpdateResult({success: true}, cardCode, newName, currentName, loaderDiv);
+          }
+        } else {
+          // Отмена редактирования
+          const originalDiv = document.createElement('div');
+          originalDiv.className = 'product-name';
+          originalDiv.ondblclick = (e) => { e.stopPropagation(); startNameEdit(productCode, originalDiv); };
+          originalDiv.textContent = currentName;
+          input.parentNode.replaceChild(originalDiv, input);
+        }
+      };
+      
+      // Обработчики клавиш
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          saveEdit();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          // Отмена
+          const originalDiv = document.createElement('div');
+          originalDiv.className = 'product-name';
+          originalDiv.ondblclick = (e) => { e.stopPropagation(); startNameEdit(productCode, originalDiv); };
+          originalDiv.textContent = currentName;
+          input.parentNode.replaceChild(originalDiv, input);
+        }
+      });
+      
+      // Потеря фокуса = сохранение
+      input.addEventListener('blur', saveEdit);
+    }
+
+    // Универсальная функция загрузки фото для карточек
+    function loadCardsPhotosProgressively(cards) {
+      // Группируем карточки по photoId чтобы не загружать одно фото несколько раз
+      const photoGroups = {};
+      
+      cards.forEach(card => {
+        const photoId = card.photoId || card.code;
+        if (!photoGroups[photoId]) {
+          photoGroups[photoId] = [];
+        }
+        photoGroups[photoId].push(card);
+      });
+      
+      // Загружаем уникальные фото
+      const uniquePhotoIds = Object.keys(photoGroups);
+      console.log(`Загружаем ${uniquePhotoIds.length} уникальных фото для ${cards.length} карточек`);
+      
+      uniquePhotoIds.forEach((photoId, index) => {
+        setTimeout(() => {
+          const representativeCard = photoGroups[photoId][0];
+          loadSingleCardPhoto(representativeCard);
+        }, index * 50);
+      });
+    }
+    
+    // Универсальная функция загрузки одного фото
+    function loadSingleCardPhoto(card) {
+      const photoId = card.photoId || card.code;
+      
+      // Если фото уже в кэше (или известно, что его нет), используем это знание
+      if (photoId in editorImageCache) {
+        updateCardPhotoDisplay(card.code, editorImageCache[photoId], card.hasChildren);
+        return;
+      }
+      
+      // Если фото уже загружается, не запускаем повторную загрузку
+      if (loadingPhotos.has(photoId)) {
+        // Но все равно обновляем отображение если в кэше уже есть
+        setTimeout(() => {
+          if (photoId in editorImageCache) {
+            updateCardPhotoDisplay(card.code, editorImageCache[photoId], card.hasChildren);
+          }
+        }, 100);
+        return;
+      }
+      
+      console.log(`Загружаем фото для ${card.code} (photoId: ${photoId})`);
+      loadingPhotos.add(photoId);
+      
+      google.script.run
+        .withSuccessHandler(function(imageData) {
+          loadingPhotos.delete(photoId);
+          
+          // Кэшируем результат: imageData (если есть) или null (если фото нет)
+          editorImageCache[photoId] = imageData;
+          
+          // Обновляем все карточки с этим photoId
+          currentCards.forEach(c => {
+            if ((c.photoId || c.code) === photoId) {
+              updateCardPhotoDisplay(c.code, imageData, c.hasChildren);
+            }
+          });
+        })
+        .withFailureHandler(function(error) {
+          loadingPhotos.delete(photoId);
+          console.error(`Ошибка загрузки фото ${photoId}:`, error);
+          // Кэшируем ошибку как отсутствие фото, чтобы не пробовать снова
+          editorImageCache[photoId] = null;
+          updateCardPhotoDisplay(card.code, null, card.hasChildren);
+        })
+        .getProductPhotoBase64(photoId);
+    }
+    
+    // Универсальная функция обновления отображения фото
+    function updateCardPhotoDisplay(cardCode, imageData, hasChildren) {
+      const photoContainer = document.getElementById(`photo-${cardCode}`);
+      if (!photoContainer) return;
+      
+      const card = currentCards.find(c => c.code === cardCode);
+      if (!card) return; // Выходим если карточка не найдена
+      
+      const cardType = card.type;
+
+      let overlayContent = '';
+      if (cardType === 'node' && hasChildren) {
+        const cachedNode = nodeInfoCache[card.code];
+        const operationText = (cachedNode && cachedNode.operation !== undefined) ? (cachedNode.operation || '') : 'загрузка...';
+        if (operationText) {
+          overlayContent = `<div class="card-operation-tag" id="operation-tag-${cardCode}">${operationText}</div>`;
+        }
+      }
+      
+      // Очищаем классы
+      photoContainer.classList.remove('no-photo');
+      
+      if (imageData) {
+        photoContainer.innerHTML = `
+          <img class="photo-loaded visible" src="${imageData}" alt="${cardCode}">
+          ${overlayContent}
+          <div class="photo-icons">
+            ${cardType === 'node' ? `<button class="icon-btn photo" onclick="event.stopPropagation(); editPhotoId('${cardCode}')" title="Редактировать фото">📷</button>` : ''}
+            <button class="icon-btn delete" onclick="event.stopPropagation(); deleteCard('${cardCode}', '${cardType}')" title="Удалить">🗑️</button>
+          </div>
+        `;
+      } else {
+        photoContainer.innerHTML = `
+          <span>Нет фото</span>
+          ${overlayContent}
+          <div class="photo-icons">
+            ${cardType === 'node' ? `<button class="icon-btn photo" onclick="event.stopPropagation(); editPhotoId('${cardCode}')" title="Редактировать фото">📷</button>` : ''}
+            <button class="icon-btn delete" onclick="event.stopPropagation(); deleteCard('${cardCode}', '${cardType}')" title="Удалить">🗑️</button>
+          </div>
+        `;
+        photoContainer.classList.add('no-photo');
+      }
+    }
+
+    // Редактирование названия текущего узла
+    function editCurrentNodeName() {
+      const nameElement = document.getElementById('currentNodeName');
+      const currentName = nameElement.textContent;
+      
+      const input = document.createElement('input');
+      input.className = 'editable-input';
+      input.style.fontSize = '18px';
+      input.value = currentName;
+      input.maxLength = 100;
+      
+      nameElement.parentNode.replaceChild(input, nameElement);
+      input.focus();
+      input.select();
+      
+      const saveEdit = () => {
+        const newName = input.value.trim();
+        if (newName && newName !== currentName) {
+          // Обновляем в схеме
+          if (currentSchema) {
+            currentSchema.forEach(item => {
+              if (item.target === currentFilterValue) {
+                item.targetName = newName;
+              }
+            });
+          }
+          
+                     // Обновляем кэш карточек
+           const cacheKey = `${currentViewType}_${currentFilterValue}`;
+           if (screenCache[cacheKey]) {
+             delete screenCache[cacheKey]; // Сбрасываем кэш чтобы обновить
+           }
+           
+           // Обновляем в кэше продуктов если это корневой узел
+           if (currentFilterValue === getRootProductCode()) {
+             const productsCacheKey = 'products_root';
+             if (screenCache[productsCacheKey]) {
+               const productCard = screenCache[productsCacheKey].cards.find(card => card.code === currentFilterValue);
+               if (productCard) {
+                 productCard.name = newName;
+               }
+             }
+           }
+           
+           // Обновляем в currentLevel если есть
+           currentLevel.forEach(level => {
+             if (level.code === currentFilterValue && level.card) {
+               level.card.name = newName;
+               level.name = newName;
+             }
+           });
+           
+           autoSaveSchema();
+        }
+        
+        // Восстанавливаем элемент
+        const newNameElement = document.createElement('div');
+        newNameElement.className = 'current-node-name editable';
+        newNameElement.id = 'currentNodeName';
+        newNameElement.ondblclick = editCurrentNodeName;
+        newNameElement.textContent = newName || currentName;
+        input.parentNode.replaceChild(newNameElement, input);
+        
+        // Обновляем хлебные крошки
+        updateCurrentNodeBreadcrumb();
+      };
+      
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          saveEdit();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          // Отмена
+          const originalElement = document.createElement('div');
+          originalElement.className = 'current-node-name editable';
+          originalElement.id = 'currentNodeName';
+          originalElement.ondblclick = editCurrentNodeName;
+          originalElement.textContent = currentName;
+          input.parentNode.replaceChild(originalElement, input);
+        }
+      });
+      
+      input.addEventListener('blur', saveEdit);
+    }
+
+    function restoreOperationElement(loaderOrInput, operationText) {
+        const operationDiv = document.createElement('div');
+        operationDiv.className = 'current-node-operation editable';
+        operationDiv.id = 'currentNodeOperation';
+        operationDiv.ondblclick = editCurrentNodeOperation;
+        operationDiv.textContent = operationText || 'Операция не задана';
+        loaderOrInput.parentNode.replaceChild(operationDiv, loaderOrInput);
+    }
+
+    // Редактирование операции текущего узла
+    function editCurrentNodeOperation() {
+      const operationElement = document.getElementById('currentNodeOperation');
+      const currentOperation = operationElement.textContent === 'Операция не задана' ? '' : operationElement.textContent;
+
+      const input = document.createElement('input');
+      input.className = 'editable-input';
+      input.style.fontSize = '16px';
+      input.value = currentOperation;
+      input.maxLength = 150;
+
+      operationElement.parentNode.replaceChild(input, operationElement);
+      input.focus();
+      input.select();
+
+      const saveEdit = () => {
+        const newOperation = input.value.trim();
+
+        if (newOperation !== currentOperation) {
+          const loaderElement = document.createElement('div');
+          loaderElement.className = 'current-node-operation';
+          loaderElement.id = 'currentNodeOperation';
+          loaderElement.innerHTML = `<div class="small-loader"></div> Сохранение...`;
+          input.parentNode.replaceChild(loaderElement, input);
+
+          const productCode = getRootProductCode();
+          
+          google.script.run
+            .withSuccessHandler(function(result) {
+              if (result.success) {
+                // Обновляем локальную схему
+                if (currentSchema) {
+                  currentSchema.forEach(item => {
+                    if (item.target === currentFilterValue) {
+                      item.operation = newOperation;
+                    }
+                  });
+                }
+                restoreOperationElement(loaderElement, newOperation);
+              } else {
+                alert('Ошибка сохранения операции: ' + result.error);
+                restoreOperationElement(loaderElement, currentOperation);
+              }
+            })
+            .withFailureHandler(function(error) {
+              alert('Критическая ошибка сохранения: ' + error.message);
+              restoreOperationElement(loaderElement, currentOperation);
+            })
+            .updateOperationForNode(productCode, currentFilterValue, newOperation);
+        } else {
+          // Нет изменений
+          restoreOperationElement(input, currentOperation);
+        }
+      };
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          saveEdit();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          restoreOperationElement(input, currentOperation);
+        }
+      });
+
+      input.addEventListener('blur', saveEdit);
+    }
+
+    // Универсальная функция фильтрации карточек
+    function filterCards() {
+      // Определяем откуда брать текст поиска
+      let searchText = '';
+      if (currentViewType === 'products') {
+        const searchInput = document.getElementById('searchInput');
+        searchText = searchInput ? searchInput.value.toLowerCase() : '';
+      } else {
+        const nodesSearchInput = document.getElementById('nodesSearchInput');
+        searchText = nodesSearchInput ? nodesSearchInput.value.toLowerCase() : '';
+      }
+      
+      const filteredCards = currentCards.filter(card => 
+        normalizeCode(card.code).toLowerCase().includes(searchText) || 
+        (card.name && card.name.toLowerCase().includes(searchText))
+      );
+      
+      // Определяем контейнер
+      const container = currentViewType === 'products' 
+        ? document.getElementById('productsGrid')
+        : document.getElementById('cardsContent');
+      
+      // Рендерим отфильтрованные карточки
+      renderCards(container, filteredCards);
+      
+      // Загружаем фото для видимых карточек
+      setTimeout(() => {
+        loadCardsPhotosProgressively(filteredCards);
+      }, 50);
+      
+      // Обновляем плейсхолдер
+      updateSearchPlaceholder();
+    }
+    
+    // Для совместимости
+    function filterProducts() {
+      filterCards();
+    }
+
+    function createNewProduct() {
+      document.getElementById('productModalTitle').textContent = 'Создание изделия';
+      document.getElementById('productCode').value = '';
+      document.getElementById('productName').value = '';
+      document.getElementById('productModal').classList.add('active');
+    }
+
+
+
+
+
+    function saveProduct() {
+      const code = normalizeCode(document.getElementById('productCode').value);
+      const name = document.getElementById('productName').value.trim();
+      
+      if (!code) {
+        alert('Артикул обязателен для заполнения');
+        return;
+      }
+      
+      // Всегда создаем новое изделие
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            closeProductModal();
+            invalidateCache('products', null); // Очищаем кэш
+            loadProducts(); // Перезагружаем список
+          } else {
+            alert('Ошибка создания: ' + result.error);
+          }
+        })
+        .createProduct(code, name, null);
+    }
+
+    function closeProductModal() {
+      document.getElementById('productModal').classList.remove('active');
+    }
+
+    // === НАВИГАЦИЯ И ХЛЕБНЫЕ КРОШКИ ===
+
+    let currentLevel = []; // Путь к текущему уровню
+
+        // Мгновенное обновление блока текущего узла из данных карточки
+    function updateCurrentNodeInfoFromCard(card, isSchemaLoading = false) {
+      // Берём данные только из кэша nodeInfoCache и editorImageCache
+      const info = nodeInfoCache[card.code] || card;
+      document.getElementById('currentNodeCode').textContent = info.code;
+      const nameElement = document.getElementById('currentNodeName');
+      nameElement.textContent = info.name;
+      const photoContainer = document.getElementById('currentNodePhoto');
+      photoContainer.classList.remove('no-photo');
+      const photoId = info.photoId || info.code;
+
+      // Обновляем операцию
+      const operationElement = document.getElementById('currentNodeOperation');
+      const cachedNode = nodeInfoCache[card.code];
+
+      // Если мы знаем, что схема грузится, или в кеше еще нет данных, показываем лоадер
+      if (isSchemaLoading) {
+        operationElement.innerHTML = '<div class="small-loader"></div> Загрузка...';
+        operationElement.classList.remove('editable');
+        operationElement.ondblclick = null;
+      } 
+      // Иначе, пытаемся взять из кеша. findOperationForNode используется как фолбэк.
+      else {
+        const operation = (cachedNode && cachedNode.operation !== undefined) 
+                            ? cachedNode.operation 
+                            : findOperationForNode(card.code);
+
+        operationElement.textContent = operation || 'Операция не задана';
+        operationElement.classList.add('editable');
+        operationElement.ondblclick = editCurrentNodeOperation;
+      }
+
+      if (editorImageCache[photoId]) {
+        photoContainer.innerHTML = `<img src="${editorImageCache[photoId]}" alt="${info.code}">`;
+      } else {
+        photoContainer.innerHTML = '<span>Нет фото</span>';
+        // Асинхронно догружаем фото только если его нет в кэше
+        loadSingleCardPhoto({ code: info.code, photoId: photoId, hasChildren: false });
+      }
+      updateCurrentNodeBreadcrumb();
+    }
+
+    function updateCurrentNodeInfo() {
+      if (currentViewType !== 'nodes' || !currentFilterValue) return;
+      
+      // Обновляем код узла
+      document.getElementById('currentNodeCode').textContent = currentFilterValue;
+      
+      // Обновляем название узла - используем данные из кэша или предыдущего экрана
+      let nodeName = getCurrentLevelName(currentFilterValue);
+      
+      // Если это корневой продукт, попробуем найти его в кэше продуктов
+      if (currentFilterValue === getRootProductCode()) {
+        const productsCacheKey = 'products_root';
+        if (screenCache[productsCacheKey]) {
+          const productCard = screenCache[productsCacheKey].cards.find(card => card.code === currentFilterValue);
+          if (productCard) {
+            nodeName = productCard.name;
+            // Также используем фото из кэша продуктов если есть
+            const productPhotoId = productCard.photoId || productCard.code;
+            if (editorImageCache[productPhotoId] && !editorImageCache[currentFilterValue]) {
+              editorImageCache[currentFilterValue] = editorImageCache[productPhotoId];
+            }
+          }
+        }
+      }
+      
+      const nameElement = document.getElementById('currentNodeName');
+      nameElement.textContent = nodeName;
+      
+      // Обновляем операцию
+      const operation = findOperationForNode(currentFilterValue);
+      const operationElement = document.getElementById('currentNodeOperation');
+      if (operationElement) {
+        operationElement.textContent = operation || 'Операция не задана';
+        operationElement.classList.add('editable');
+        operationElement.ondblclick = editCurrentNodeOperation;
+      }
+      
+      // Загружаем фото узла - проверяем кэш сначала
+      const photoContainer = document.getElementById('currentNodePhoto');
+      photoContainer.classList.remove('no-photo');
+      
+      if (editorImageCache[currentFilterValue]) {
+        // Фото уже в кэше
+        photoContainer.innerHTML = `<img src="${editorImageCache[currentFilterValue]}" alt="${currentFilterValue}">`;
+      } else {
+        // Показываем лоадер только если фото реально нет
+        photoContainer.innerHTML = '<div class="photo-loader"></div>';
+        
+        // Загружаем фото асинхронно
+        loadSingleImageForCurrentNode(currentFilterValue);
+      }
+      
+      // Обновляем хлебные крошки в блоке текущего узла
+      updateCurrentNodeBreadcrumb();
+    }
+    
+    // Оптимизированная загрузка изображений
+    const imageLoadQueue = [];
+    let isLoadingImages = false;
+    const MAX_CONCURRENT_LOADS = 3;
+    const IMAGE_LOAD_TIMEOUT = 10000;
+
+    function queueImageLoad(imageCode, callback) {
+      imageLoadQueue.push({ code: imageCode, callback: callback });
+      processImageQueue();
+    }
+
+    function processImageQueue() {
+      if (isLoadingImages || imageLoadQueue.length === 0) return;
+      
+      isLoadingImages = true;
+      const batch = imageLoadQueue.splice(0, MAX_CONCURRENT_LOADS);
+      
+      let completedLoads = 0;
+      
+      batch.forEach(item => {
+        const loadTimeout = setTimeout(() => {
+          completedLoads++;
+          if (item.callback) item.callback(null);
+          
+          if (completedLoads === batch.length) {
+            isLoadingImages = false;
+            processImageQueue();
+          }
+        }, IMAGE_LOAD_TIMEOUT);
+        
+        google.script.run
+          .withSuccessHandler(function(imageData) {
+            clearTimeout(loadTimeout);
+            completedLoads++;
+            
+            if (imageData) {
+              editorImageCache[item.code] = imageData;
+            }
+            
+            if (item.callback) item.callback(imageData);
+            
+            if (completedLoads === batch.length) {
+              isLoadingImages = false;
+              processImageQueue();
+            }
+          })
+          .withFailureHandler(function(error) {
+            clearTimeout(loadTimeout);
+            completedLoads++;
+            
+            if (item.callback) item.callback(null);
+            
+            if (completedLoads === batch.length) {
+              isLoadingImages = false;
+              processImageQueue();
+            }
+          })
+          .getProductPhotoBase64(item.code);
+      });
+    }
+
+    function loadSingleImageForCurrentNode(imageCode) {
+      if (!imageCode) return;
+      
+      const photoContainer = document.getElementById('currentNodePhoto');
+      if (!photoContainer) return;
+      
+      photoContainer.innerHTML = '<div class="photo-loader"></div>';
+      
+      queueImageLoad(imageCode, function(imageData) {
+        if (!photoContainer) return;
+        
+        if (imageData) {
+          photoContainer.innerHTML = `<img src="${imageData}" alt="${imageCode}">`;
+          photoContainer.classList.remove('no-photo');
+        } else {
+          photoContainer.innerHTML = '<span>Нет фото</span>';
+          photoContainer.classList.add('no-photo');
+        }
+      });
+    }
+    
+    function updateCurrentNodeBreadcrumb() {
+      const breadcrumbContainer = document.getElementById('currentNodeBreadcrumb');
+      if (!breadcrumbContainer) return;
+      
+      const rootCode = getRootProductCode();
+      
+      let breadcrumbHtml = `<a href="#" class="breadcrumb-link" onclick="goToProductsScreen()">Изделия</a>`;
+      breadcrumbHtml += ` / <a href="#" class="breadcrumb-link" onclick="navigateToLevel('${rootCode}')">${rootCode}</a>`;
+      
+      // Добавляем промежуточные уровни
+      currentLevel.forEach(level => {
+        breadcrumbHtml += ` / <a href="#" class="breadcrumb-link" onclick="navigateToLevel('${level.code}')">${level.code}</a>`;
+      });
+      
+      // Добавляем текущий уровень (без ссылки)
+      if (currentFilterValue !== rootCode && currentFilterValue !== null) {
+        breadcrumbHtml += ` / <span style="color: #333; font-weight: bold;">${currentFilterValue}</span>`;
+      }
+      
+      breadcrumbContainer.innerHTML = breadcrumbHtml;
+    }
+
+    function getCurrentLevelName(code) {
+      // Если это продукт, ищем в currentCards
+      if (currentViewType === 'products') {
+        const card = currentCards.find(c => c.code === code);
+        return card ? card.name : code;
+      }
+      
+      // Если это узел, ищем в схеме или карточках
+      const schemaItem = currentSchema ? currentSchema.find(item => item.target === code || item.source === code) : null;
+      if (schemaItem) {
+        return schemaItem.targetName || schemaItem.sourceName || code;
+      }
+      
+      const card = currentCards.find(c => c.code === code);
+      return card ? card.name : code;
+    }
+    
+    function getRootProductCode() {
+      const titleText = document.getElementById('editorTitle').textContent;
+      return titleText.split(' - ')[0];
+    }
+    
+    function findOperationForNode(nodeCode) {
+      if (!currentSchema || currentSchema.length === 0) return null;
+      const schemaRow = currentSchema.find(item => item.target === nodeCode);
+      return schemaRow ? schemaRow.operation : null;
+    }
+
+    
+    function navigateToLevel(levelCode) {
+      // Если это корневой уровень
+      if (levelCode === getRootProductCode()) {
+        currentLevel = [];
+        currentFilterValue = levelCode;
+        
+        // Находим карточку корневого продукта в кэше
+        const productsCacheKey = 'products_root';
+        if (screenCache[productsCacheKey]) {
+          const productCard = screenCache[productsCacheKey].cards.find(card => card.code === levelCode);
+          if (productCard) {
+            updateCurrentNodeInfoFromCard(productCard);
+          }
+        }
+      } else {
+        // Находим позицию в пути и обрезаем путь до этой позиции
+        const levelIndex = currentLevel.findIndex(item => item.code === levelCode);
+        if (levelIndex !== -1) {
+          // Если есть сохраненная карточка для этого уровня, используем её
+          const levelData = currentLevel[levelIndex];
+          if (levelData.card) {
+            updateCurrentNodeInfoFromCard(levelData.card, false);
+          }
+          
+          currentLevel = currentLevel.slice(0, levelIndex);
+          currentFilterValue = levelCode;
+        }
+      }
+      
+      initializeScreen('nodes', currentFilterValue);
+    }
+
+    // Функция для совместимости (удалено, используем универсальную)
+
+    // Все старые функции удалены - теперь используется единая архитектура
+
+    function clearSelection() {
+      document.querySelectorAll('.node-item, .product-card').forEach(item => {
+        item.classList.remove('selected');
+      });
+      selectedNode = null;
+    }
+
+    // === МОДАЛЬНЫЕ ОКНА ДЛЯ УЗЛОВ ===
+
+    function addRootNode() {
+      selectedNode = { type: 'new', parent: currentLevelCode };
+      openNodeModal('Добавление элемента');
+    }
+
+    function addChildNode(parentCode) {
+      selectedNode = { type: 'new', parent: parentCode };
+      openNodeModal('Добавление элемента');
+    }
+
+    function editNode(nodeCode) {
+      const schemaItem = currentSchema.find(item => item.target === nodeCode);
+      selectedNode = { type: 'edit', code: nodeCode };
+      openNodeModal('Редактирование узла', schemaItem);
+    }
+
+    function editChildNode(parentCode, childCode) {
+      const schemaItem = currentSchema.find(item => item.target === parentCode && item.source === childCode);
+      selectedNode = { type: 'edit', code: childCode, parent: parentCode };
+      openNodeModal('Редактирование элемента', schemaItem);
+    }
+
+    function openNodeModal(title, data = null) {
+      document.getElementById('nodeModalTitle').textContent = title;
+      
+      if (data) {
+        document.getElementById('nodeType').value = data.sourceQuantity === 'операция' ? 'operation' : 'component';
+        document.getElementById('nodeCode').value = data.source || data.target || '';
+        document.getElementById('sourceQuantity').value = data.sourceQuantity === 'операция' ? 1 : data.sourceQuantity || 1;
+        document.getElementById('targetQuantity').value = data.targetQuantity || 1;
+        document.getElementById('nodeName').value = data.sourceName || data.targetName || '';
+        document.getElementById('nodePhotoId').value = data.sourcePhotoId || data.targetPhotoId || '';
+      } else {
+        document.getElementById('nodeType').value = 'component';
+        document.getElementById('nodeCode').value = '';
+        document.getElementById('sourceQuantity').value = 1;
+        document.getElementById('targetQuantity').value = 1;
+        document.getElementById('nodeName').value = '';
+        document.getElementById('nodePhotoId').value = '';
+      }
+      
+      onNodeTypeChange();
+      document.getElementById('nodeModal').classList.add('active');
+    }
+
+    function onNodeTypeChange() {
+      const type = document.getElementById('nodeType').value;
+      const isOperation = type === 'operation';
+      
+      document.getElementById('sourceQuantityGroup').style.display = isOperation ? 'none' : 'block';
+      document.getElementById('targetQuantityGroup').style.display = isOperation ? 'none' : 'block';
+      
+      if (isOperation) {
+        document.getElementById('sourceQuantity').value = 'операция';
+      }
+    }
+
+    function saveNode() {
+      const type = document.getElementById('nodeType').value;
+      const code = normalizeCode(document.getElementById('nodeCode').value.trim());
+      const sourceQuantity = type === 'operation' ? 'операция' : document.getElementById('sourceQuantity').value;
+      const targetQuantity = document.getElementById('targetQuantity').value;
+      const name = document.getElementById('nodeName').value.trim();
+      const photoId = normalizeCode(document.getElementById('nodePhotoId').value.trim());
+      
+      if (!code) {
+        alert('Артикул/название обязательно для заполнения');
+        return;
+      }
+      
+      // Получаем код продукта из заголовка
+      const titleText = document.getElementById('editorTitle').textContent;
+      const productCode = titleText.split(': ')[1].split(' - ')[0];
+      
+      // Получаем название целевого элемента
+      const targetItem = currentSchema.find(item => item.target === selectedNode.parent || item.source === selectedNode.parent);
+      const targetName = targetItem ? (targetItem.targetName || targetItem.sourceName || selectedNode.parent) : selectedNode.parent;
+      
+      const nodeData = {
+        source: code,
+        target: selectedNode.parent,
+        sourceQuantity: sourceQuantity,
+        targetQuantity: targetQuantity,
+        sourceName: name,
+        sourcePhotoId: photoId,
+        productCode: productCode,
+        targetName: targetName // Добавляем название целевого элемента
+      };
+      
+      if (selectedNode.type === 'new') {
+        // Добавляем новый элемент в схему
+        currentSchema.push(nodeData);
+      } else {
+        // Обновляем существующий
+        const index = currentSchema.findIndex(item => 
+          (selectedNode.parent ? 
+            item.target === selectedNode.parent && item.source === selectedNode.code :
+            item.target === selectedNode.code
+          )
+        );
+        if (index !== -1) {
+          currentSchema[index] = { ...currentSchema[index], ...nodeData };
+        }
+      }
+      
+      closeNodeModal();
+      renderTree();
+      clearSelection();
+      autoSaveSchema(); // Автосохранение
+    }
+    
+    // Автосохранение схемы
+    function autoSaveSchema() {
+      if (!currentSchema || currentSchema.length === 0) return;
+      
+      // Получаем код продукта из заголовка
+      const titleText = document.getElementById('editorTitle').textContent;
+      const productCode = titleText.split(' - ')[0];
+      
+      if (!productCode) return;
+      
+      console.log('Автосохранение схемы...');
+      
+      // Очищаем кэш так как данные изменились
+      invalidateCache('nodes', currentFilterValue);
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (!result.success) {
+            console.error('Ошибка автосохранения:', result.error);
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.error('Ошибка автосохранения:', error.message);
+        })
+        .saveProductSchema(productCode, currentSchema);
+    }
+
+    function closeNodeModal() {
+      document.getElementById('nodeModal').classList.remove('active');
+    }
+
+    function deleteNode(nodeCode) {
+      if (confirm('Удалить узел и все его дочерние элементы?')) {
+        // Удаляем все связанные записи
+        currentSchema = currentSchema.filter(item => 
+          item.target !== nodeCode && item.source !== nodeCode
+        );
+        renderTree();
+      }
+    }
+
+    function deleteChildNode(parentCode, childCode) {
+      if (confirm('Удалить этот элемент?')) {
+        currentSchema = currentSchema.filter(item => 
+          !(item.target === parentCode && item.source === childCode)
+        );
+        renderTree();
+      }
+    }
+
+    // === ОБНОВЛЕНИЕ СВОЙСТВ В РЕАЛЬНОМ ВРЕМЕНИ ===
+
+    function updateNodeType(nodeCode) {
+      const newType = document.getElementById('nodeTypeEdit').value;
+      const isOperation = newType === 'operation';
+      
+      const item = currentSchema.find(item => item.source === nodeCode && item.target === currentLevelCode);
+      if (item) {
+        item.sourceQuantity = isOperation ? 'операция' : 1;
+      }
+      
+      document.getElementById('quantityGroupEdit').style.display = isOperation ? 'none' : 'block';
+      renderTree();
+      autoSaveSchema(); // Автосохранение
+    }
+    
+    function updateNodeCode(oldNodeCode) {
+      const newCode = document.getElementById('nodeCodeEdit').value;
+      const item = currentSchema.find(item => item.source === oldNodeCode && item.target === currentLevelCode);
+      if (item) {
+        item.source = newCode;
+        // Также обновляем все записи где этот код является целевым
+        currentSchema.forEach(schemaItem => {
+          if (schemaItem.target === oldNodeCode) {
+            schemaItem.target = newCode;
+          }
+        });
+      }
+      renderTree();
+      clearSelection();
+      autoSaveSchema(); // Автосохранение
+    }
+    
+    function updateNodeQuantity(nodeCode) {
+      const newQuantity = document.getElementById('nodeQuantityEdit').value;
+      const item = currentSchema.find(item => item.source === nodeCode && item.target === currentLevelCode);
+      if (item) {
+        item.sourceQuantity = newQuantity;
+      }
+      renderTree();
+      autoSaveSchema(); // Автосохранение
+    }
+    
+    function updateNodeName(nodeCode) {
+      const newName = document.getElementById('nodeNameEdit').value;
+      const item = currentSchema.find(item => item.source === nodeCode && item.target === currentLevelCode);
+      if (item) {
+        item.sourceName = newName;
+      }
+      renderTree();
+      autoSaveSchema(); // Автосохранение
+    }
+    
+    function updateNodePhoto(nodeCode) {
+      const newPhotoId = document.getElementById('nodePhotoEdit').value;
+      const item = currentSchema.find(item => item.source === nodeCode && item.target === currentLevelCode);
+      if (item) {
+        item.sourcePhotoId = newPhotoId;
+      }
+      loadSingleImage(newPhotoId);
+      renderTree();
+      autoSaveSchema(); // Автосохранение
+    }
+    
+    function deleteCurrentNode(nodeCode) {
+      if (confirm('Удалить этот элемент и все его дочерние элементы?')) {
+        // Удаляем элемент и все его дочерние элементы (рекурсивно)
+        deleteNodeRecursive(nodeCode);
+        renderTree();
+        clearSelection();
+        autoSaveSchema(); // Автосохранение
+      }
+    }
+    
+    function deleteNodeRecursive(nodeCode) {
+      // Удаляем все дочерние элементы
+      const childrenToDelete = currentSchema.filter(item => item.target === nodeCode);
+      childrenToDelete.forEach(child => {
+        deleteNodeRecursive(child.source);
+      });
+      
+      // Удаляем сам элемент
+      currentSchema = currentSchema.filter(item => 
+        !(item.source === nodeCode || item.target === nodeCode)
+      );
+    }
+
+    function updateNodeNameOld(nodeCode) {
+      const newName = document.getElementById('nodeNameEdit').value;
+      currentSchema.forEach(item => {
+        if (item.target === nodeCode) {
+          item.targetName = newName;
+        }
+      });
+      renderTree();
+    }
+
+    function updateNodePhoto(nodeCode) {
+      const newPhotoId = document.getElementById('nodePhotoEdit').value;
+      currentSchema.forEach(item => {
+        if (item.target === nodeCode) {
+          item.targetPhotoId = newPhotoId;
+        }
+      });
+      // Загружаем новое фото
+      loadSingleImage(newPhotoId);
+      renderTree();
+    }
+
+    function updateChildType(parentCode, childCode) {
+      const newType = document.getElementById('childTypeEdit').value;
+      const isOperation = newType === 'operation';
+      
+      const item = currentSchema.find(item => item.target === parentCode && item.source === childCode);
+      if (item) {
+        item.sourceQuantity = isOperation ? 'операция' : 1;
+      }
+      
+      document.getElementById('quantityGroup').style.display = isOperation ? 'none' : 'block';
+      renderTree();
+    }
+
+    function updateChildCode(parentCode, oldChildCode) {
+      const newCode = document.getElementById('childCodeEdit').value;
+      const item = currentSchema.find(item => item.target === parentCode && item.source === oldChildCode);
+      if (item) {
+        item.source = newCode;
+      }
+      renderTree();
+    }
+
+    function updateChildQuantity(parentCode, childCode) {
+      const newQuantity = document.getElementById('childQuantityEdit').value;
+      const item = currentSchema.find(item => item.target === parentCode && item.source === childCode);
+      if (item) {
+        item.sourceQuantity = newQuantity;
+      }
+      renderTree();
+    }
+
+    function updateChildName(parentCode, childCode) {
+      const newName = document.getElementById('childNameEdit').value;
+      const item = currentSchema.find(item => item.target === parentCode && item.source === childCode);
+      if (item) {
+        item.sourceName = newName;
+      }
+      renderTree();
+    }
+
+    function updateChildPhoto(parentCode, childCode) {
+      const newPhotoId = document.getElementById('childPhotoEdit').value;
+      const item = currentSchema.find(item => item.target === parentCode && item.source === childCode);
+      if (item) {
+        item.sourcePhotoId = newPhotoId;
+      }
+      loadSingleImage(newPhotoId);
+      renderTree();
+    }
+
+    // === РАБОТА С ИЗОБРАЖЕНИЯМИ ===
+
+    function getImageFromCache(imageCode) {
+      return editorImageCache[imageCode] || null;
+    }
+
+    function loadSingleImage(imageCode) {
+      if (imageCode && !editorImageCache[imageCode]) {
+        google.script.run
+          .withSuccessHandler(function(imageData) {
+            if (imageData) {
+              editorImageCache[imageCode] = imageData;
+            }
+          })
+          .getProductPhotoBase64(imageCode);
+      }
+    }
+
+    // === СОХРАНЕНИЕ СХЕМЫ ===
+    // Автосохранение реализовано в функции autoSaveSchema()
+
+    function updateOperationTags() {
+      console.log("Updating operation tags from cache...");
+      currentCards.forEach(card => {
+        if (card.type === 'node' && card.hasChildren) {
+          const tagElement = document.getElementById('operation-tag-' + card.code);
+          if (tagElement) {
+            const cachedNode = nodeInfoCache[card.code];
+            const operationText = (cachedNode && cachedNode.operation !== undefined) ? (cachedNode.operation || null) : 'loading';
+
+            if (operationText === 'loading') {
+              tagElement.textContent = 'загрузка...';
+              tagElement.style.display = 'block';
+            } else if (operationText) {
+              tagElement.textContent = operationText;
+              tagElement.style.display = 'block';
+            } else {
+              // Если операции нет, скрываем тег
+              tagElement.style.display = 'none';
+            }
+          }
+        }
+      });
+    }
+  </script>
+</body>
+</html> 

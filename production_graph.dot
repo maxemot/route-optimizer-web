@@ -1,0 +1,121 @@
+// Production Graph
+digraph {
+	rankdir=LR
+	nodesep=0.1
+	ranksep=0.1
+	concentrate=true
+	"02.07.01.С01" [label="02.07.01.С01
+получаем 4 шт
+берем 4 шт" fillcolor=lightgray height=0.2 margin=0.05 shape=box style="rounded,filled" width=1.0]
+	"02.07.01" [label="02.07.01
+получаем 1 шт" fillcolor=lightgray height=0.2 margin=0.05 shape=box style="rounded,filled" width=1.0]
+	"02.07.01.С01" -> "02.07.01"
+	"02.07.01.С02" [label="02.07.01.С02
+получаем 3 шт
+берем 3 шт" fillcolor=lightgray height=0.2 margin=0.05 shape=box style="rounded,filled" width=1.0]
+	"02.07.01" [label="02.07.01
+получаем 1 шт" fillcolor=lightgray height=0.2 margin=0.05 shape=box style="rounded,filled" width=1.0]
+	"02.07.01.С02" -> "02.07.01"
+	"02.07.01.С03" [label="02.07.01.С03
+получаем 1 шт
+берем 1 шт" fillcolor=lightgray height=0.2 margin=0.05 shape=box style="rounded,filled" width=1.0]
+	"02.07.01" [label="02.07.01
+получаем 1 шт" fillcolor=lightgray height=0.2 margin=0.05 shape=box style="rounded,filled" width=1.0]
+	"02.07.01.С03" -> "02.07.01"
+	"02.07.01.С04" [label="02.07.01.С04
+получаем 1 шт
+берем 1 шт" fillcolor=lightgray height=0.2 margin=0.05 shape=box style="rounded,filled" width=1.0]
+	"02.07.01" [label="02.07.01
+получаем 1 шт" fillcolor=lightgray height=0.2 margin=0.05 shape=box style="rounded,filled" width=1.0]
+	"02.07.01.С04" -> "02.07.01"
+	"02.07.01.С05" [label="02.07.01.С05
+получаем 2 шт
+берем 2 шт" fillcolor=lightgray height=0.2 margin=0.05 shape=box style="rounded,filled" width=1.0]
+	"02.07.01" [label="02.07.01
+получаем 1 шт" fillcolor=lightgray height=0.2 margin=0.05 shape=box style="rounded,filled" width=1.0]
+	"02.07.01.С05" -> "02.07.01"
+	"02.07.01.С06" [label="02.07.01.С06
+получаем 1 шт
+берем 1 шт" fillcolor=lightgray height=0.2 margin=0.05 shape=box style="rounded,filled" width=1.0]
+	"02.07.01" [label="02.07.01
+получаем 1 шт" fillcolor=lightgray height=0.2 margin=0.05 shape=box style="rounded,filled" width=1.0]
+	"02.07.01.С06" -> "02.07.01"
+	"02.07.01.С07" [label="02.07.01.С07
+получаем 1 шт
+берем 1 шт" fillcolor=lightgray height=0.2 margin=0.05 shape=box style="rounded,filled" width=1.0]
+	"02.07.01" [label="02.07.01
+получаем 1 шт" fillcolor=lightgray height=0.2 margin=0.05 shape=box style="rounded,filled" width=1.0]
+	"02.07.01.С07" -> "02.07.01"
+	"02.07.01.С08" [label="02.07.01.С08
+получаем 1 шт
+берем 1 шт" fillcolor=lightgray height=0.2 margin=0.05 shape=box style="rounded,filled" width=1.0]
+	"02.07.01" [label="02.07.01
+получаем 1 шт" fillcolor=lightgray height=0.2 margin=0.05 shape=box style="rounded,filled" width=1.0]
+	"02.07.01.С08" -> "02.07.01"
+	"02.07.01.С09" [label="02.07.01.С09
+получаем 2 шт
+берем 2 шт" fillcolor=lightgray height=0.2 margin=0.05 shape=box style="rounded,filled" width=1.0]
+	"02.07.01" [label="02.07.01
+получаем 1 шт" fillcolor=lightgray height=0.2 margin=0.05 shape=box style="rounded,filled" width=1.0]
+	"02.07.01.С09" -> "02.07.01"
+	"start_group_02.07.01.С01" [label="Ношки раскрой 1 берем 4 шт
+Заглушка 10х10 берем 8 шт
+гибка операция
+сборка операция" fillcolor=lightgray height=0.2 margin=0.05 shape=box style="rounded,filled" width=1.0]
+	"start_group_02.07.01.С01" -> "02.07.01.С01"
+	"start_group_02.07.01.С02" [label="02.02.01.Р32 берем 3 шт
+04.04.01.Р18 берем 3 шт
+М3.26 берем 6 шт
+гибка операция
+сборка операция" fillcolor=lightgray height=0.2 margin=0.05 shape=box style="rounded,filled" width=1.0]
+	"start_group_02.07.01.С02" -> "02.07.01.С02"
+	"start_group_02.07.01.С03" [label="02.02.01.Р16 берем 1 шт
+02.02.01.Р09 берем 2 шт
+02.02.01.Р25 берем 2 шт
+02.02.01.Р26 берем 2 шт
+М3.26 берем 12 шт
+гибка операция
+сборка операция" fillcolor=lightgray height=0.2 margin=0.05 shape=box style="rounded,filled" width=1.0]
+	"start_group_02.07.01.С03" -> "02.07.01.С03"
+	"start_group_02.07.01.С04" [label="02.02.01.Р13 берем 2 шт
+02.02.01.Р06 берем 1 шт
+М3.26 берем 8 шт
+гибка операция
+сборка операция" fillcolor=lightgray height=0.2 margin=0.05 shape=box style="rounded,filled" width=1.0]
+	"start_group_02.07.01.С04" -> "02.07.01.С04"
+	"start_group_02.07.01.С05" [label="02.02.01.Р10 берем 2 шт
+гибка операция
+сборка операция" fillcolor=lightgray height=0.2 margin=0.05 shape=box style="rounded,filled" width=1.0]
+	"start_group_02.07.01.С05" -> "02.07.01.С05"
+	"start_group_02.07.01.С06" [label="01.00.03.РТ1 берем 2 шт
+02.02.01.Р28 берем 2 шт
+сетка? берем nan шт
+проволка? берем nan шт
+М3.26 берем 4 шт
+гибка операция
+сборка операция" fillcolor=lightgray height=0.2 margin=0.05 shape=box style="rounded,filled" width=1.0]
+	"start_group_02.07.01.С06" -> "02.07.01.С06"
+	"start_group_02.07.01.С07" [label="01.00.03.РТ9 берем 1 шт
+01.00.03.РТ10 берем 1 шт
+01.00.03.РТ7 берем 2 шт
+сетка? берем nan шт
+гибка операция
+сборка операция" fillcolor=lightgray height=0.2 margin=0.05 shape=box style="rounded,filled" width=1.0]
+	"start_group_02.07.01.С07" -> "02.07.01.С07"
+	"start_group_02.07.01.С08" [label="01.00.03.РТ8 берем 2 шт
+01.00.03.РТ11 берем 1 шт
+01.00.03.РТ12 берем 1 шт
+01.00.03.РТ6 берем 2 шт
+сетка? берем 1 шт
+проволка? берем 2 шт
+гибка операция
+сборка операция" fillcolor=lightgray height=0.2 margin=0.05 shape=box style="rounded,filled" width=1.0]
+	"start_group_02.07.01.С08" -> "02.07.01.С08"
+	"start_group_02.07.01.С09" [label="01.00.03.РТ5 берем 2 шт
+проволка? берем nan шт
+гибка операция
+сборка операция" fillcolor=lightgray height=0.2 margin=0.05 shape=box style="rounded,filled" width=1.0]
+	"start_group_02.07.01.С09" -> "02.07.01.С09"
+	"start_group_02.07.01" [label="Упаковка операция" fillcolor=lightgray height=0.2 margin=0.05 shape=box style="rounded,filled" width=1.0]
+	"start_group_02.07.01" -> "02.07.01"
+}
