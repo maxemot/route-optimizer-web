@@ -33,6 +33,24 @@ header {
     border-radius: 16px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
     backdrop-filter: blur(10px);
+    position: relative; /* Для позиционирования кнопки */
+}
+
+.docs-link {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    font-size: 1.5rem;
+    text-decoration: none;
+    padding: 5px 10px;
+    background: #f0f4f8;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.docs-link:hover {
+    background: #e2e8f0;
+    transform: scale(1.1);
 }
 
 header h1 {
@@ -112,6 +130,16 @@ header p {
 
 .btn-success:hover:not(:disabled) {
     background: #2f855a;
+    transform: translateY(-1px);
+}
+
+.btn-danger {
+    background: #e53e3e;
+    color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+    background: #c53030;
     transform: translateY(-1px);
 }
 

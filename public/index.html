@@ -7,16 +7,14 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>🚚 Система управления доставками</title>
-    <link rel="stylesheet" href="styles.css?v=14">
+    <link rel="stylesheet" href="styles.css?v=15">
 </head>
 <body>
     <div class="container">
         <header>
+            <a href="/readme" class="docs-link">📚</a>
             <h1>🚚 Система управления доставками <span id="release-time" class="release-time"></span></h1>
             <p>Создавайте доставки, оптимизируйте маршруты и отслеживайте статусы</p>
-            <p style="margin-top: 10px;">
-                <a href="/readme" style="color: #4299e1; text-decoration: none; font-size: 0.9rem;">📚 Документация проекта</a>
-            </p>
         </header>
 
         <div class="controls">
@@ -25,6 +23,9 @@
             </button>
             <button id="optimize-route-btn" class="btn btn-success" disabled>
                 🗺️ Построить маршрут
+            </button>
+            <button id="delete-deliveries-btn" class="btn btn-danger" disabled>
+                🗑️ Удалить
             </button>
             <span id="selected-count" class="selected-info">Выбрано: 0 доставок</span>
         </div>
@@ -160,6 +161,6 @@
             }
         });
     </script>
-    <script src="script.js?v=14"></script>
+    <script src="script.js?v=15"></script>
 </body>
 </html> 
