@@ -7,7 +7,6 @@ let socket = null; // Глобальная переменная для соке�
 // DOM элементы
 const addDeliveryBtn = document.getElementById('add-delivery-btn');
 const optimizeRouteBtn = document.getElementById('optimize-route-btn');
-const routingBtn = document.getElementById('routing-btn'); // Новая кнопка
 const selectedCount = document.getElementById('selected-count');
 const deliveriesTable = document.getElementById('deliveries-table');
 const deliveriesTbody = document.getElementById('deliveries-tbody');
@@ -140,7 +139,6 @@ function initializeEventListeners() {
     // Кнопки управления
     addDeliveryBtn.addEventListener('click', openDeliveryModal);
     optimizeRouteBtn.addEventListener('click', optimizeSelectedRoute);
-    routingBtn.addEventListener('click', runFullRouting); // Обработчик для новой кнопки
     selectAllCheckbox.addEventListener('change', toggleSelectAll);
     deleteDeliveriesBtn.addEventListener('click', handleDeleteSelected);
 
@@ -356,16 +354,14 @@ function createDeliveryRow(delivery) {
 }
 
 function getStatusBadge(status) {
-    const statusConfig = {
-        'new': { label: 'Новая', colorClass: 'status-new' },
-        'flex': { label: 'Флекс', colorClass: 'status-flex' },
-        'fixed': { label: 'Фикс', colorClass: 'status-fixed' },
-        'delivered': { label: 'Доставлен', colorClass: 'status-delivered' },
-        'default': { label: status, colorClass: 'status-default' }
+    const statusLabels = {
+        'pending': 'Ожидает',
+        'ready': 'Готов',
+        'in-route': 'В пути',
+        'delivered': 'Доставлен'
     };
 
-    const config = statusConfig[status] || statusConfig['default'];
-    return `<span class="status-badge ${config.colorClass}">${config.label}</span>`;
+    return `<span class="status-badge status-${status}">${statusLabels[status] || status}</span>`;
 }
 
 function createRouteLink(routeId) {
@@ -586,37 +582,6 @@ function openRouteInYandexMaps(url) {
         window.open(url, '_blank');
     }
 }
-
-// --- НОВАЯ ФУНКЦИЯ ДЛЯ ГЛОБАЛЬНОЙ МАРШРУТИЗАЦИИ ---
-async function runFullRouting() {
-    if (!confirm("Вы уверены, что хотите запустить полную маршрутизацию для всех 'Новых' и 'Флекс' доставок? Существующие 'Флекс' маршруты будут перестроены.")) {
-        return;
-    }
-
-    try {
-        showLoader('Выполняется маршрутизация...');
-        const response = await fetch('/api/routing', {
-            method: 'POST',
-        });
-
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.error || 'Ошибка на сервере при выполнении маршрутизации');
-        }
-
-        const result = await response.json();
-        console.log('🎉 Маршрутизация завершена:', result);
-        hideLoader();
-        alert(`Маршрутизация завершена! Создано или обновлено ${result.routesCreated} маршрутов для ${result.deliveriesAffected} доставок.`);
-        // Обновление таблицы произойдет через WebSocket события, которые сгенерирует сервер.
-
-    } catch (error) {
-        console.error('❌ Ошибка маршрутизации:', error);
-        hideLoader();
-        alert(error.message);
-    }
-}
-
 
 function findRouteById(routeId) {
     // В реальном приложении здесь был бы поиск в базе данных
