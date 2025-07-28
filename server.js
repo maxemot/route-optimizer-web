@@ -28,17 +28,17 @@ app.get('/readme', (req, res) => {
 // API endpoint для получения времени релиза
 app.get('/api/release-time', (req, res) => {
   // Фиксированное время релиза для текущей версии
-  const releaseTime = process.env.RELEASE_TIME || "2025-07-28T09:10:00.000Z";
+  const releaseTime = "2025-07-28T06:15:00.000Z"; // Примерно 09:15 МСК
   
-  // Форматируем в нужный формат
+  // Форматируем в нужный формат (используем UTC, т.к. сервер Vercel в UTC)
   const date = new Date(releaseTime);
-  const day = String(date.getDate()).padStart(2, '0');
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  const seconds = String(date.getSeconds()).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const hours = String(date.getUTCHours()).padStart(2, '0');
+  const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+  const seconds = String(date.getUTCSeconds()).padStart(2, '0');
   
-  const formattedTime = `${day}.${month} ${hours}:${minutes}:${seconds}`;
+  const formattedTime = `${day}.${month} ${hours}:${minutes}:${seconds} UTC`;
   
   res.json({ 
     releaseTime: formattedTime,

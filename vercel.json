@@ -12,7 +12,11 @@
       "dest": "/server.js"
     },
     {
-      "src": "/(.*)",
+      "src": "/",
+      "dest": "/server.js"
+    },
+    {
+      "src": "/readme",
       "dest": "/server.js"
     }
   ],
