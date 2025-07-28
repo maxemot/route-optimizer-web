@@ -34,7 +34,7 @@ const totalDistance = document.getElementById('total-distance');
 const totalDuration = document.getElementById('total-duration');
 const routeStepsList = document.getElementById('route-steps-list');
 const openYandexMapsBtn = document.getElementById('open-yandex-maps');
-const copyRouteLinkBtn = document.getElementById('copy-route-link');
+const createRouteBtn = document.getElementById('create-route-btn'); // Новая кнопка
 const routeError = document.getElementById('route-error');
 
 let currentRouteData = null;
@@ -80,6 +80,19 @@ function initializeWebSocket() {
         }
         const newRow = createDeliveryRow(newDelivery);
         deliveriesTbody.appendChild(newRow);
+        updateUI();
+    });
+
+    socket.on('deliveries_updated', (updatedDeliveries) => {
+        console.log('🔄 Получено обновление для доставок:', updatedDeliveries);
+        updatedDeliveries.forEach(delivery => {
+            const row = document.querySelector(`tr[data-delivery-id='${delivery.id}']`);
+            if (row) {
+                // Обновляем только нужные ячейки, чтобы не перерисовывать всю строку
+                row.querySelector('td:nth-child(5)').innerHTML = getStatusBadge(delivery.status);
+                row.querySelector('td:nth-child(8)').innerHTML = createRouteLink(delivery.routeId);
+            }
+        });
         updateUI();
     });
 
@@ -152,8 +165,8 @@ function initializeEventListeners() {
     cancelDeliveryBtn.addEventListener('click', () => closeModal(deliveryModal));
 
     // Результаты маршрута
-    openYandexMapsBtn.addEventListener('click', openRouteInYandexMaps);
-    copyRouteLinkBtn.addEventListener('click', copyRouteLink);
+    openYandexMapsBtn.addEventListener('click', () => openRouteInYandexMaps(currentRouteData?.yandexMapsUrl));
+    createRouteBtn.addEventListener('click', handleCreateRoute);
 }
 
 // Работа с модальными окнами
@@ -319,7 +332,7 @@ function createDeliveryRow(delivery) {
 
     const statusBadge = getStatusBadge(delivery.status);
     const routeCell = delivery.routeId
-        ? `<a href="#" class="route-link" onclick="openRouteInYandexMaps('${delivery.routeId}')" data-route="${delivery.routeId}">№${delivery.routeId}</a>`
+        ? `<a href="#" class="route-link" onclick="openRouteFromLink(event)" data-route="${delivery.routeId}">№${delivery.routeId}</a>`
         : '';
 
     row.innerHTML = `
@@ -347,6 +360,13 @@ function getStatusBadge(status) {
     };
 
     return `<span class="status-badge status-${status}">${statusLabels[status]}</span>`;
+}
+
+function createRouteLink(routeId) {
+    if (routeId) {
+        return `<a href="#" class="route-link" onclick="openRouteFromLink(event)" data-route="${routeId}">Просмотр</a>`;
+    }
+    return 'Не назначен';
 }
 
 function truncateText(text, maxLength) {
@@ -424,38 +444,27 @@ async function optimizeSelectedRoute() {
 
     const selectedDeliveries = Array.from(checkedBoxes).map(checkbox => {
         const deliveryId = parseInt(checkbox.dataset.deliveryId);
-        return deliveries.find(d => d.id === deliveryId);
-    }).filter(d => d); // Отфильтровываем возможные null
+        // Вместо поиска в загруженном списке, просто собираем ID
+        return { id: deliveryId };
+    }).filter(d => d);
 
-    if (selectedDeliveries.length < 1) { // Теперь достаточно одной
+    if (selectedDeliveries.length < 1) {
         alert('Выберите минимум 1 доставку для построения маршрута');
         return;
     }
 
     try {
         showLoader('Оптимизация маршрута...');
-
-        const routeData = await optimizeRoute(selectedDeliveries);
-        
-        // Временно генерируем ID маршрута на клиенте. В будущем это тоже должно быть на сервере.
-        const routeId = `R-${Date.now()}`; 
-        
-        selectedDeliveries.forEach(delivery => {
-            delivery.routeId = routeId;
-            delivery.status = 'ready'; // Эту логику тоже нужно будет перенести на сервер
-        });
+        const deliveryIds = selectedDeliveries.map(d => d.id);
+        const routeData = await fetchOptimizedRoute(deliveryIds);
 
         currentRouteData = {
             ...routeData,
-            routeId: routeId,
-            deliveries: selectedDeliveries
+            deliveryIds: deliveryIds
         };
 
         hideLoader();
-        // После построения маршрута нужно будет обновить таблицу, чтобы показать номера маршрутов
-        // Это будет сделано в рамках задачи по real-time обновлениям
-        // loadAndRenderDeliveries();
-        showRouteResults(currentRouteData);
+        showRouteResults(currentRouteData, true); // Показываем модалку с кнопкой "Создать"
         updateUI();
 
     } catch (error) {
@@ -464,32 +473,62 @@ async function optimizeSelectedRoute() {
     }
 }
 
-async function optimizeRoute(selectedDeliveries) {
-    const addresses = selectedDeliveries.map(d => d.address);
-    const coordinates = selectedDeliveries.map(d => d.coordinates);
-
+async function fetchOptimizedRoute(deliveryIds) {
     const response = await fetch('/api/optimize-route', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ addresses, coordinates }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deliveryIds }),
     });
 
     if (!response.ok) {
-        throw new Error('Ошибка сервера при оптимизации маршрута');
+        const err = await response.json();
+        throw new Error(err.error || 'Ошибка сервера при оптимизации маршрута');
     }
 
     return await response.json();
 }
 
-function showRouteResults(routeData) {
-    routeNumber.textContent = `№${routeData.routeId}`;
-    deliveriesCount.textContent = routeData.deliveries.length;
+
+async function handleCreateRoute() {
+    if (!currentRouteData) return;
+
+    try {
+        showLoader('Создание маршрута...');
+        const response = await fetch('/api/routes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(currentRouteData),
+        });
+
+        if (!response.ok) {
+            throw new Error('Не удалось сохранить маршрут на сервере');
+        }
+
+        const newRoute = await response.json();
+        console.log('🎉 Маршрут успешно создан:', newRoute);
+
+        hideLoader();
+        closeModal(routeModal);
+        // Обновления в таблице произойдут через WebSocket
+
+    } catch (error) {
+        console.error('Ошибка создания маршрута:', error);
+        hideLoader();
+        alert(error.message);
+    }
+}
+
+
+function showRouteResults(routeData, isCreating) {
+    routeNumber.textContent = isCreating ? "Новый маршрут" : `Маршрут №${routeData.id}`;
+    deliveriesCount.textContent = routeData.deliveryIds ? routeData.deliveryIds.length : routeData.orderedAddresses.length - 2;
     totalDistance.textContent = routeData.totalDistance.text;
     totalDuration.textContent = routeData.totalDuration.text;
+    
+    // Показываем/скрываем кнопки
+    createRouteBtn.style.display = isCreating ? 'inline-block' : 'none';
+    openYandexMapsBtn.style.display = routeData.yandexMapsUrl ? 'inline-block' : 'none';
 
-    // Отображаем шаги маршрута
     routeStepsList.innerHTML = '';
     routeData.orderedAddresses.forEach((address, index) => {
         const step = document.createElement('div');
@@ -508,31 +547,28 @@ function showRouteError(message) {
 }
 
 // Работа с Яндекс.Картами
-function openRouteInYandexMaps(routeId) {
-    if (routeId && typeof routeId === 'string') {
-        // Клик по номеру маршрута в таблице
-        const route = findRouteById(routeId);
-        if (route && route.yandexMapsUrl) {
-            window.open(route.yandexMapsUrl, '_blank');
-        }
-    } else {
-        // Клик из модального окна результатов
-        if (currentRouteData && currentRouteData.yandexMapsUrl) {
-            window.open(currentRouteData.yandexMapsUrl, '_blank');
-        }
+async function openRouteFromLink(event) {
+    event.preventDefault();
+    const routeId = event.target.dataset.route;
+    if (!routeId) return;
+
+    try {
+        showLoader('Загрузка маршрута...');
+        const response = await fetch(`/api/routes/${routeId}`);
+        if (!response.ok) throw new Error('Маршрут не найден');
+        const routeData = await response.json();
+        currentRouteData = routeData;
+        hideLoader();
+        showRouteResults(routeData, false); // Показываем модалку без кнопки "Создать"
+    } catch (error) {
+        hideLoader();
+        alert(error.message);
     }
 }
 
-function copyRouteLink() {
-    if (currentRouteData && currentRouteData.yandexMapsUrl) {
-        navigator.clipboard.writeText(currentRouteData.yandexMapsUrl).then(() => {
-            copyRouteLinkBtn.textContent = '✓ Скопировано!';
-            setTimeout(() => {
-                copyRouteLinkBtn.innerHTML = '📋 Копировать ссылку';
-            }, 2000);
-        }).catch(() => {
-            alert('Не удалось скопировать ссылку');
-        });
+function openRouteInYandexMaps(url) {
+    if (url) {
+        window.open(url, '_blank');
     }
 }
 

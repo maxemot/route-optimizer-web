@@ -47,6 +47,66 @@ io.on('connection', (socket) => {
     });
 });
 
+app.post('/api/routes', async (req, res) => {
+    try {
+        const { deliveryIds, orderedAddresses, totalDistance, totalDuration, yandexMapsUrl } = req.body;
+        if (!deliveryIds || deliveryIds.length === 0) {
+            return res.status(400).json({ error: 'Не предоставлены ID доставок для создания маршрута' });
+        }
+
+        // 1. Генерируем новый номер маршрута
+        const routeCounter = await kv.incr('nextRouteId');
+        const routeId = `П-${String(routeCounter).padStart(4, '0')}`;
+
+        // 2. Сохраняем сам маршрут в отдельный список
+        const newRoute = { id: routeId, deliveryIds, orderedAddresses, totalDistance, totalDuration, yandexMapsUrl, createdAt: new Date().toISOString() };
+        const routes = await kv.get('routes') || [];
+        await kv.set('routes', [...routes, newRoute]);
+
+        // 3. Обновляем доставки, добавляя им номер маршрута
+        const deliveries = await kv.get('deliveries') || [];
+        const deliveriesToUpdate = [];
+        const allOtherDeliveries = [];
+
+        deliveries.forEach(d => {
+            if (deliveryIds.includes(d.id)) {
+                deliveriesToUpdate.push({ ...d, routeId: routeId, status: 'ready' });
+            } else {
+                allOtherDeliveries.push(d);
+            }
+        });
+
+        await kv.set('deliveries', [...allOtherDeliveries, ...deliveriesToUpdate]);
+        
+        // 4. Оповещаем клиентов об обновлении
+        io.emit('deliveries_updated', deliveriesToUpdate);
+        console.log(`🗺️ Создан новый маршрут ${routeId} для доставок: ${deliveryIds.join(', ')}`);
+
+        res.status(201).json(newRoute);
+    } catch (error) {
+        console.error('Ошибка создания маршрута:', error);
+        res.status(500).json({ error: 'Не удалось создать маршрут' });
+    }
+});
+
+app.get('/api/routes/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const routes = await kv.get('routes') || [];
+        const route = routes.find(r => r.id === id);
+
+        if (route) {
+            res.json(route);
+        } else {
+            res.status(404).json({ error: 'Маршрут не найден' });
+        }
+    } catch (error) {
+        console.error('Ошибка получения маршрута:', error);
+        res.status(500).json({ error: 'Не удалось получить маршрут' });
+    }
+});
+
+
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
