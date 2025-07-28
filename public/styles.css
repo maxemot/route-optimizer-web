@@ -441,6 +441,30 @@ header p {
     }
 }
 
+/* Пустое состояние таблицы */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #a0aec0;
+}
+
+.empty-state-icon {
+    font-size: 4rem;
+    margin-bottom: 16px;
+    display: block;
+}
+
+.empty-state h3 {
+    color: #4a5568;
+    margin-bottom: 8px;
+    font-size: 1.25rem;
+}
+
+.empty-state p {
+    color: #718096;
+    font-size: 1rem;
+}
+
 /* Скрытие пустых ячеек */
 .deliveries-table td:empty::after {
     content: "—";

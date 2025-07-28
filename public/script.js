@@ -41,7 +41,9 @@ let currentRouteData = null;
 // Инициализация
 document.addEventListener('DOMContentLoaded', function() {
     initializeEventListeners();
+    renderDeliveriesTable(); // Показываем пустую таблицу
     updateUI();
+    // НЕ загружаем данные автоматически - пустая таблица при старте
 });
 
 function initializeEventListeners() {
@@ -91,6 +93,7 @@ function closeModal(modal) {
 
 function openDeliveryModal() {
     openModal(deliveryModal);
+    deliveryAddress.focus(); // Фокус на поле ввода адреса
 }
 
 function clearDeliveryForm() {
@@ -192,6 +195,20 @@ function saveDelivery() {
 
 function renderDeliveriesTable() {
     deliveriesTbody.innerHTML = '';
+
+    if (deliveries.length === 0) {
+        // Показываем пустое состояние
+        const emptyRow = document.createElement('tr');
+        emptyRow.innerHTML = `
+            <td colspan="8" class="empty-state">
+                <span class="empty-state-icon">📦</span>
+                <h3>Доставки не добавлены</h3>
+                <p>Нажмите кнопку "➕ Добавить доставку" чтобы создать первую доставку</p>
+            </td>
+        `;
+        deliveriesTbody.appendChild(emptyRow);
+        return;
+    }
 
     deliveries.forEach(delivery => {
         const row = createDeliveryRow(delivery);
@@ -410,44 +427,4 @@ function showLoader(message = 'Загрузка...') {
 
 function hideLoader() {
     loader.classList.add('hidden');
-}
-
-// Сохранение состояния (можно будет расширить для работы с LocalStorage или сервером)
-function saveState() {
-    localStorage.setItem('deliveries', JSON.stringify(deliveries));
-    localStorage.setItem('nextDeliveryId', nextDeliveryId.toString());
-    localStorage.setItem('nextRouteId', nextRouteId.toString());
-}
-
-function loadState() {
-    try {
-        const savedDeliveries = localStorage.getItem('deliveries');
-        const savedDeliveryId = localStorage.getItem('nextDeliveryId');
-        const savedRouteId = localStorage.getItem('nextRouteId');
-
-        if (savedDeliveries) {
-            deliveries = JSON.parse(savedDeliveries);
-        }
-        if (savedDeliveryId) {
-            nextDeliveryId = parseInt(savedDeliveryId);
-        }
-        if (savedRouteId) {
-            nextRouteId = parseInt(savedRouteId);
-        }
-
-        renderDeliveriesTable();
-        updateUI();
-    } catch (error) {
-        console.error('Ошибка при загрузке сохраненного состояния:', error);
-    }
-}
-
-// Автосохранение при изменениях
-function autoSave() {
-    saveState();
-}
-
-// Загрузка состояния при инициализации
-document.addEventListener('DOMContentLoaded', function() {
-    loadState();
-}); 
+} 
