@@ -90,7 +90,7 @@ app.post('/api/deliveries', async (req, res) => {
 });
 
 app.get('/api/release-time', (req, res) => {
-    const releaseTime = "2025-07-28T07:52:49.000Z";
+    const releaseTime = "2025-07-28T07:58:35.000Z";
     const date = new Date(releaseTime);
     const mskDate = new Date(date.getTime() + (3 * 60 * 60 * 1000));
     const day = String(mskDate.getUTCDate()).padStart(2, '0');
@@ -249,8 +249,10 @@ function formatDuration(seconds) {
     return { value: seconds, text: text.trim() || 'меньше минуты' };
 }
 
+/*
 server.listen(PORT, () => {
     console.log(`🚀 Сервер запущен на порту ${PORT}`);
 });
+*/
 
 module.exports = server;
