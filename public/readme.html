@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>📚 Документация проекта - Система управления доставками</title>
+    <link rel="stylesheet" href="styles.css?v=4">
+    <style>
+        .readme-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .readme-header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px;
+        }
+        
+        .readme-section {
+            background: white;
+            margin: 20px 0;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #4299e1;
+        }
+        
+        .readme-section h2 {
+            color: #2d3748;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .readme-section h3 {
+            color: #4a5568;
+            margin: 20px 0 10px 0;
+        }
+        
+        .code-block {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+        
+        .highlight {
+            background: #fed7d7;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+        
+        .success {
+            background: #c6f6d5;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+        
+        .warning {
+            background: #fef5e7;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+        
+        .link-button {
+            display: inline-block;
+            background: #4299e1;
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            margin: 5px;
+            transition: background 0.2s;
+        }
+        
+        .link-button:hover {
+            background: #3182ce;
+        }
+        
+        .back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: #48bb78;
+            color: white;
+            text-decoration: none;
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-weight: 600;
+            z-index: 1000;
+        }
+        
+        .back-button:hover {
+            background: #38a169;
+        }
+        
+        ul {
+            padding-left: 20px;
+        }
+        
+        li {
+            margin: 8px 0;
+        }
+        
+        .api-endpoint {
+            background: #e6fffa;
+            border-left: 3px solid #38b2ac;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        
+        .file-tree {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            white-space: pre-line;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <a href="/" class="back-button">← На главную</a>
+    
+    <div class="readme-container">
+        <div class="readme-header">
+            <h1>📚 Документация проекта</h1>
+            <h2>🚚 Система управления доставками</h2>
+            <p>Веб-сервис для оптимизации маршрутов доставки</p>
+        </div>
+
+        <div class="readme-section">
+            <h2>🌐 ТЕКУЩЕЕ СОСТОЯНИЕ</h2>
+            <p><strong>Репозиторий:</strong> <a href="https://github.com/maxemot/route-optimizer-web" target="_blank" class="link-button">GitHub</a></p>
+            <p><strong>Рабочий сайт:</strong> <a href="https://route-optimizer-web.vercel.app" target="_blank" class="link-button">Vercel App</a></p>
+            <p><strong>Автодеплой:</strong> <span class="success">настроен через GitHub Actions → Vercel</span></p>
+            <p><strong>Локальная папка:</strong> <code>/Users/maksimshchegolikhin/Desktop/Programming</code></p>
+        </div>
+
+        <div class="readme-section">
+            <h2>🏗️ АРХИТЕКТУРА</h2>
+            <ul>
+                <li><strong>Backend:</strong> Node.js + Express.js (<code>server.js</code>)</li>
+                <li><strong>Frontend:</strong> HTML5 + CSS3 + Vanilla JavaScript (<code>public/</code> папка)</li>
+                <li><strong>Деплой:</strong> Vercel с автоматическим деплоем при push в main</li>
+            </ul>
+            
+            <h3>🔌 API Endpoints:</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/geocode</strong><br>
+                Геокодирование адресов через Yandex API
+            </div>
+            <div class="api-endpoint">
+                <strong>POST /api/optimize-route</strong><br>
+                Решение задачи коммивояжера для оптимизации маршрута
+            </div>
+        </div>
+
+        <div class="readme-section">
+            <h2>📋 ФУНКЦИОНАЛ</h2>
+            <ol>
+                <li><strong>Таблица доставок</strong> с колонками: № Доставки, Адрес, Координаты, Статус, Объем, На точке(мин), № Маршрута</li>
+                <li><strong>Добавление доставок</strong> через модальное окно с автогеокодированием</li>
+                <li><strong>Множественный выбор</strong> доставок галочками</li>
+                <li><strong>Построение маршрута</strong> - TSP алгоритм для выбранных точек</li>
+                <li><strong>Интеграция с Яндекс.Картами</strong> - открытие маршрута по ссылке</li>
+                <li><strong>Время релиза</strong> в заголовке для отслеживания обновлений</li>
+            </ol>
+        </div>
+
+        <div class="readme-section">
+            <h2>🔧 ТЕХНИЧЕСКИЕ ДЕТАЛИ</h2>
+            <ul>
+                <li><strong>API ключ Yandex:</strong> <code class="highlight">7726ddb0-76da-4747-8007-d84dfe2fb93f</code> (в переменной окружения <code>YANDEX_API_KEY</code>)</li>
+                <li><strong>Алгоритм TSP:</strong> полный перебор перестановок до 10 точек</li>
+                <li><strong>Матрица расстояний:</strong> <span class="warning">mock-функция (прямая линия + оценка времени)</span></li>
+                <li><strong>Кэширование:</strong> геокодирование кэшируется в памяти клиента</li>
+                <li><strong>Версионирование:</strong> CSS/JS файлы версионируются для bypass кэша</li>
+            </ul>
+        </div>
+
+        <div class="readme-section">
+            <h2>📁 СТРУКТУРА ФАЙЛОВ</h2>
+            <div class="file-tree">├── server.js (Express сервер)
+├── package.json (зависимости Node.js)
+├── vercel.json (конфиг деплоя)
+├── public/
+│   ├── index.html (основная страница)
+│   ├── styles.css (стили интерфейса)
+│   ├── script.js (клиентская логика)
+│   └── readme.html (эта страница)
+└── .github/workflows/vercel-deploy.yml (автодеплой)</div>
+        </div>
+
+        <div class="readme-section">
+            <h2>🚨 ВАЖНЫЕ ОСОБЕННОСТИ</h2>
+            <ul>
+                <li><span class="highlight">НЕ используем localhost</span> - всё работает через Vercel</li>
+                <li><span class="highlight">НЕ создаём новые файлы</span> без необходимости</li>
+                <li>Версионируем CSS/JS файлы при изменениях (<code>?v=X</code>)</li>
+                <li>Коммитим и пушим в main для автодеплоя</li>
+                <li><span class="warning">Yandex Distance Matrix API платный</span> - используем mock</li>
+            </ul>
+        </div>
+
+        <div class="readme-section">
+            <h2>📊 ПОСЛЕДНИЕ ИЗМЕНЕНИЯ</h2>
+            <ul>
+                <li>✅ Добавлено отображение времени релиза в заголовке</li>
+                <li>✅ Исправлено скрытие модальных окон при загрузке</li>
+                <li>✅ Настроен автодеплой через GitHub Actions</li>
+                <li>✅ Таблица показывает пустое состояние при старте</li>
+                <li>✅ Создана страница документации проекта</li>
+            </ul>
+        </div>
+
+        <div class="readme-section">
+            <h2>🎯 КОНТЕКСТ ДЛЯ НОВОГО ЧАТА</h2>
+            <p>Если нужно перейти в новый чат, скопируйте следующий текст:</p>
+            <div class="code-block">
+**КОНТЕКСТ ПРОЕКТА: Система управления доставками (веб-сервис)**
+
+Я работаю над веб-приложением для оптимизации маршрутов доставки. Проект уже развернут и работает, нужно продолжить разработку.
+
+**🌐 ТЕКУЩЕЕ СОСТОЯНИЕ:**
+- **Репозиторий:** https://github.com/maxemot/route-optimizer-web
+- **Рабочий сайт:** https://route-optimizer-web.vercel.app
+- **Автодеплой:** настроен через GitHub Actions → Vercel
+- **Локальная папка:** `/Users/maksimshchegolikhin/Desktop/Programming`
+
+**🏗️ АРХИТЕКТУРА:**
+- **Backend:** Node.js + Express.js (`server.js`)
+- **Frontend:** HTML5 + CSS3 + Vanilla JavaScript (`public/` папка)
+- **API:** POST /api/geocode, POST /api/optimize-route
+- **Деплой:** Vercel с автоматическим деплоем при push в main
+
+**📋 ФУНКЦИОНАЛ:**
+Таблица доставок, добавление через модалы, множественный выбор, TSP алгоритм, интеграция с Яндекс.Картами, время релиза в заголовке.
+
+**🔧 ТЕХНИЧЕСКИЕ ДЕТАЛИ:**
+- **API ключ Yandex:** `7726ddb0-76da-4747-8007-d84dfe2fb93f`
+- **Алгоритм TSP:** полный перебор до 10 точек
+- **Матрица расстояний:** mock-функция
+- **Версионирование:** CSS/JS файлы с `?v=X`
+
+**🚨 ВАЖНО:**
+НЕ localhost, НЕ новые файлы без нужды, коммитим в main для автодеплоя, Yandex Distance Matrix платный.
+
+**🎯 ГОТОВ К ПРОДОЛЖЕНИЮ РАБОТЫ!**
+            </div>
+        </div>
+
+        <div class="readme-section">
+            <h2>⚡ БЫСТРЫЕ ССЫЛКИ</h2>
+            <a href="/" class="link-button">🚚 Главная страница</a>
+            <a href="https://github.com/maxemot/route-optimizer-web" target="_blank" class="link-button">📂 GitHub</a>
+            <a href="https://vercel.com/dashboard" target="_blank" class="link-button">🚀 Vercel Dashboard</a>
+            <a href="https://yandex.ru/dev/geocode/" target="_blank" class="link-button">🗺️ Yandex Geocoder API</a>
+        </div>
+
+        <footer style="text-align: center; margin-top: 40px; padding: 20px; color: #718096;">
+            <p>📚 Документация обновлена автоматически при деплое</p>
+            <p>🕐 <span id="current-time"></span></p>
+        </footer>
+    </div>
+
+    <script>
+        // Показываем текущее время
+        document.addEventListener('DOMContentLoaded', function() {
+            const now = new Date();
+            const timeString = now.toLocaleString('ru-RU', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            document.getElementById('current-time').textContent = `Просмотрено: ${timeString}`;
+        });
+    </script>
+</body>
+</html> 

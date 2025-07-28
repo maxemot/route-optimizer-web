@@ -20,6 +20,11 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Страница документации
+app.get('/readme', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'readme.html'));
+});
+
 // API endpoint для геокодирования
 app.post('/api/geocode', async (req, res) => {
     try {
