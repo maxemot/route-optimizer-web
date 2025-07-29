@@ -340,6 +340,10 @@ async function calculateMockDistanceMatrix(coordinates) {
     const n = coordinates.length;
     const distanceMatrix = Array(n).fill(0).map(() => Array(n).fill(Infinity));
     const durationMatrix = Array(n).fill(0).map(() => Array(n).fill(Infinity));
+    const roadCoefficient = 1.44;
+    const speedKmh = 30; // 30 км/ч
+    const speedMps = speedKmh * 1000 / 3600; // м/с
+
     for (let i = 0; i < n; i++) {
         for (let j = 0; j < n; j++) {
             if (i === j) {
@@ -349,9 +353,11 @@ async function calculateMockDistanceMatrix(coordinates) {
             }
             const coord1 = coordinates[i].split(' ').map(parseFloat);
             const coord2 = coordinates[j].split(' ').map(parseFloat);
-            const distance = calculateStraightDistance(coord1[1], coord1[0], coord2[1], coord2[0]);
-            distanceMatrix[i][j] = distance;
-            durationMatrix[i][j] = Math.round(distance / 16.67); // ~60 km/h в м/с
+            const distanceByLine = calculateStraightDistance(coord1[1], coord1[0], coord2[1], coord2[0]);
+            distanceMatrix[i][j] = distanceByLine;
+            
+            const distanceByRoad = distanceByLine * roadCoefficient;
+            durationMatrix[i][j] = Math.round(distanceByRoad / speedMps);
         }
     }
     return { distance: distanceMatrix, duration: durationMatrix };
@@ -387,10 +393,16 @@ function solveTsp(timeMatrix, distanceMatrix) {
     let bestDistance = distanceMatrix[0][bestPath[0]];
     for (let i = 0; i < bestPath.length - 1; i++) { bestDistance += distanceMatrix[bestPath[i]][bestPath[i+1]]; }
     bestDistance += distanceMatrix[bestPath[bestPath.length - 1]][0];
+    
+    // Пересчитываем общее время на основе общего "дорожного" расстояния
+    const totalDistanceByRoad = bestDistance * 1.44;
+    const speedMps = 30 * 1000 / 3600;
+    const totalDurationByRoad = Math.round(totalDistanceByRoad / speedMps);
+
     if (minDuration === Infinity) {
         throw new Error("Невозможно построить маршрут");
     }
-    return { path: bestPath, duration: minDuration, distance: bestDistance };
+    return { path: bestPath, duration: totalDurationByRoad, distance: bestDistance };
 }
 
 function getPermutations(inputArray) {
