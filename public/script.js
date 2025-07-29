@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     socket.on('deliveries_updated', (updatedDeliveries) => {
+        console.log('Получены данные по WebSocket (deliveries_updated):', updatedDeliveries);
         deliveries = updatedDeliveries;
         renderTable();
         updateSelectionState();
