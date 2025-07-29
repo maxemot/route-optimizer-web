@@ -354,6 +354,7 @@ function createDeliveryRow(delivery) {
 
 function getStatusBadge(status) {
     const statusLabels = {
+        'new': 'Новая',
         'pending': 'Ожидает',
         'ready': 'Готов',
         'in-route': 'В пути',

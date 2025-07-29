@@ -200,17 +200,16 @@ header p {
 
 /* Статусы в таблице */
 .status-badge {
-    padding: 4px 12px;
-    border-radius: 20px;
+    padding: 4px 8px;
+    border-radius: 12px;
     font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
+    font-weight: 500;
 }
-
-.status-pending { background: #fed7d7; color: #c53030; }
+.status-new { background: #e2e8f0; color: #4a5568; }
+.status-pending { background: #faf089; color: #744210; }
 .status-ready { background: #c6f6d5; color: #276749; }
-.status-in-route { background: #bee3f8; color: #2b6cb0; }
-.status-delivered { background: #d6f5d6; color: #22543d; }
+.status-in-route { background: #bee3f8; color: #2a4365; }
+.status-delivered { background: #c6f6d5; color: #276749; } /* Такой же как ready */
 
 /* Номер маршрута как ссылка */
 .route-link {
