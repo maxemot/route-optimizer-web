@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="styles.css?v=4">
     <style>
         .readme-container {
-            max-width: 900px;
+            max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
             line-height: 1.6;
@@ -273,14 +273,44 @@
                     <pre><code>[
   {
     "orderedRoute": [
-      { "address": "Поповка, Московская обл., 141892", "deliveryId": null, "...": "..." },
-      { "address": "Москва, ул. Тверская, 1", "deliveryId": "Д-0001", "...": "..." },
-      { "address": "Москва, ул. Арбат, 10", "deliveryId": "Д-0002", "...": "..." },
-      { "address": "Поповка, Московская обл., 141892", "deliveryId": null, "...": "..." }
+      {
+        "address": "Поповка, Московская обл., 141892",
+        "deliveryId": null,
+        "travelTimeToPoint": null,
+        "distanceToPointByLine": null,
+        "distanceToPointByRoad": null,
+        "timeAtPoint": null
+      },
+      {
+        "address": "Москва, ул. Тверская, 1",
+        "deliveryId": "Д-0001",
+        "travelTimeToPoint": 1234,
+        "distanceToPointByLine": 5678,
+        "distanceToPointByRoad": 8176,
+        "timeAtPoint": 15
+      },
+      {
+        "address": "Москва, ул. Арбат, 10",
+        "deliveryId": "Д-0002",
+        "travelTimeToPoint": 456,
+        "distanceToPointByLine": 1234,
+        "distanceToPointByRoad": 1776,
+        "timeAtPoint": 20
+      },
+      {
+        "address": "Поповка, Московская обл., 141892",
+        "deliveryId": null,
+        "travelTimeToPoint": 1234,
+        "distanceToPointByLine": 5678,
+        "distanceToPointByRoad": 8176,
+        "timeAtPoint": null
+      }
     ],
-    "totalDistanceByRoad": { "value": 15000, "text": "15.0 км" },
-    "totalDuration": { "value": 1800, "text": "30 мин" },
+    "totalDistanceByLine": { "value": 12345, "text": "12.3 км" },
+    "totalDistanceByRoad": { "value": 17777, "text": "17.8 км" },
+    "totalDuration": { "value": 3900, "text": "1 ч 5 мин" },
     "yandexMapsUrl": "https://yandex.ru/maps/?rtext=...",
+    "calculatedAt": "2023-07-25T12:00:00.000Z",
     "deliveryIds": ["Д-0001", "Д-0002"]
   }
 ]</code></pre>
@@ -294,9 +324,12 @@
                     <p><strong>Пример запроса:</strong> (Тело запроса — это массив, полученный от <code>/api/optimize-route</code>)</p>
                     <pre><code>[
   {
-    "orderedRoute": ["..."],
-    "totalDistanceByRoad": { "value": 15000, "text": "15.0 км" },
-    "totalDuration": { "value": 1800, "text": "30 мин" },
+    "orderedRoute": [
+      { "address": "Поповка, Московская обл., 141892", "deliveryId": null, "travelTimeToPoint": null, "distanceToPointByLine": null, "distanceToPointByRoad": null, "timeAtPoint": null },
+      { "address": "Москва, ул. Тверская, 1", "deliveryId": "Д-0001", "travelTimeToPoint": 1234, "distanceToPointByLine": 5678, "distanceToPointByRoad": 8176, "timeAtPoint": 15 }
+    ],
+    "totalDistanceByRoad": { "value": 17777, "text": "17.8 км" },
+    "totalDuration": { "value": 3900, "text": "1 ч 5 мин" },
     "yandexMapsUrl": "https://yandex.ru/maps/?rtext=...",
     "deliveryIds": ["Д-0001", "Д-0002"]
   }
@@ -306,9 +339,13 @@
   {
     "id": "М-0042",
     "deliveryIds": [1, 2],
-    "orderedRoute": ["..."],
-    "createdAt": "2023-07-25T12:00:00.000Z",
-    "...": "..."
+    "orderedRoute": [
+        { "address": "Поповка, Московская обл., 141892", "deliveryId": null, "travelTimeToPoint": null, "distanceToPointByLine": null, "distanceToPointByRoad": null, "timeAtPoint": null }
+    ],
+    "totalDistanceByRoad": { "value": 17777, "text": "17.8 км" },
+    "totalDuration": { "value": 3900, "text": "1 ч 5 мин" },
+    "yandexMapsUrl": "https://yandex.ru/maps/?rtext=...",
+    "createdAt": "2023-07-25T12:00:00.000Z"
   }
 ]</code></pre>
                 </div>
@@ -323,9 +360,28 @@
                     <pre><code>{
   "id": "М-0042",
   "deliveryIds": [1, 2],
-  "orderedRoute": ["..."],
-  "createdAt": "2023-07-25T12:00:00.000Z",
-  "...": "..."
+  "orderedRoute": [
+    {
+      "address": "Поповка, Московская обл., 141892",
+      "deliveryId": null,
+      "travelTimeToPoint": null,
+      "distanceToPointByLine": null,
+      "distanceToPointByRoad": null,
+      "timeAtPoint": null
+    },
+    {
+      "address": "Москва, ул. Тверская, 1",
+      "deliveryId": "Д-0001",
+      "travelTimeToPoint": 1234,
+      "distanceToPointByLine": 5678,
+      "distanceToPointByRoad": 8176,
+      "timeAtPoint": 15
+    }
+  ],
+  "totalDistanceByRoad": { "value": 17777, "text": "17.8 км" },
+  "totalDuration": { "value": 3900, "text": "1 ч 5 мин" },
+  "yandexMapsUrl": "https://yandex.ru/maps/?rtext=...",
+  "createdAt": "2023-07-25T12:00:00.000Z"
 }</code></pre>
                 </div>
             </details>
