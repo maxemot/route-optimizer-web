@@ -376,17 +376,20 @@ function truncateText(text, maxLength) {
     return text.substring(0, maxLength) + '...';
 }
 
-function formatDuration(seconds) {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    let text = '';
-    if (hours > 0) text += `${hours} ч `;
-    if (minutes > 0) text += `${minutes} мин`;
-    return { value: seconds, text: text.trim() || 'меньше минуты' };
+function formatDistance(meters) {
+    if (meters === null || meters === undefined) return { value: null, text: '' };
+    const km = meters / 1000;
+    return { value: meters, text: `${Math.round(km)}км` };
 }
 
-function formatDistance(meters) {
-    return { value: meters, text: (meters / 1000).toFixed(1) + ' км' };
+function formatDuration(seconds) {
+    if (seconds === null || seconds === undefined) return { value: null, text: '' };
+    const h = Math.floor(seconds / 3600);
+    const m = Math.round((seconds % 3600) / 60);
+    let parts = [];
+    if (h > 0) parts.push(`${h}ч`);
+    if (m > 0 || h === 0) parts.push(`${m}мин`);
+    return { value: seconds, text: parts.join(' ') };
 }
 
 // Управление выбором
@@ -569,7 +572,7 @@ function showRouteResults(routeData, isCreating) {
             timeSpan.className = 'route-step-time';
             const distanceText = formatDistance(routePoint.distanceToPointByRoad).text;
             const durationText = formatDuration(routePoint.travelTimeToPoint).text;
-            timeSpan.textContent = `(${distanceText}, + ${durationText})`;
+            timeSpan.textContent = `${distanceText}, ${durationText}`;
             step.appendChild(timeSpan);
         }
 
