@@ -12,6 +12,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let deliveries = [];
     let selectedDeliveries = new Set();
     let currentRouteData = null;
+    let geocodeTimeout = null;
+    let currentCoordinates = null;
 
     // Модальные окна
     const modals = {
@@ -39,6 +41,48 @@ document.addEventListener('DOMContentLoaded', () => {
             // Показываем сообщение об ошибке в таблице
             deliveryTableBody.innerHTML = '<tr><td colspan="9" class="text-center">Ошибка загрузки данных</td></tr>';
         }
+    }
+
+    async function geocodeAddress(address) {
+        const addressCoordinates = document.getElementById('address-coordinates');
+        const addressError = document.getElementById('address-error');
+        const saveButton = document.getElementById('save-delivery');
+        
+        addressError.textContent = '';
+        saveButton.disabled = true;
+
+        if (address.length < 5) {
+            addressCoordinates.textContent = 'Введите более полный адрес';
+            return;
+        }
+
+        addressCoordinates.textContent = 'Идет поиск координат...';
+        
+        try {
+            const response = await fetch('/api/geocode', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ address })
+            });
+            const data = await response.json();
+            if (response.ok) {
+                currentCoordinates = data.coordinates;
+                addressCoordinates.textContent = `Координаты: ${data.coordinates}`;
+                saveButton.disabled = false;
+            } else {
+                throw new Error(data.error || 'Не удалось найти адрес');
+            }
+        } catch (error) {
+            addressError.textContent = error.message;
+            currentCoordinates = null;
+        }
+    }
+
+    function debounceGeocode(event) {
+        clearTimeout(geocodeTimeout);
+        geocodeTimeout = setTimeout(() => {
+            geocodeAddress(event.target.value);
+        }, 800); // Задержка в 800 мс
     }
 
     // Загружаем данные при старте
@@ -162,20 +206,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Функции для работы с API ---
 
-    async function addDelivery(address, timeAtPoint) {
+    async function addDelivery(deliveryData) {
         try {
             const response = await fetch('/api/deliveries', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ address, timeAtPoint })
+                body: JSON.stringify(deliveryData)
             });
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.message || 'Ошибка при добавлении доставки');
+                throw new Error(errorData.error || 'Ошибка при добавлении доставки');
             }
             showToast('Доставка успешно добавлена');
             closeModal('add-delivery-modal');
-            document.getElementById('add-delivery-form').reset();
+            document.getElementById('delivery-address').value = '';
+            document.getElementById('delivery-volume').value = '1.0';
+            document.getElementById('delivery-time').value = '15';
+            document.getElementById('address-coordinates').textContent = '';
+            currentCoordinates = null;
             // Перезагружаем данные через REST API
             loadDeliveries();
         } catch (error) {
@@ -437,11 +485,23 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('save-delivery').addEventListener('click', function(event) {
         event.preventDefault();
         const address = document.getElementById('delivery-address').value;
+        const volume = parseFloat(document.getElementById('delivery-volume').value);
         const timeAtPoint = parseInt(document.getElementById('delivery-time').value, 10);
-        if (address && timeAtPoint > 0) {
-            addDelivery(address, timeAtPoint);
+        
+        if (address && currentCoordinates && volume > 0 && timeAtPoint > 0) {
+            const deliveryData = {
+                address,
+                coordinates: currentCoordinates,
+                volume,
+                timeAtPoint
+            };
+            addDelivery(deliveryData);
+        } else {
+            showToast('Пожалуйста, заполните все поля и дождитесь поиска координат', 'warning');
         }
     });
+
+    document.getElementById('delivery-address').addEventListener('input', debounceGeocode);
 
     // --- Вспомогательные функции ---
 
