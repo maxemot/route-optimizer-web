@@ -541,10 +541,24 @@ function showRouteResults(routeData, isCreating) {
     openYandexMapsBtn.style.display = routeData.yandexMapsUrl ? 'inline-block' : 'none';
 
     routeStepsList.innerHTML = '';
-    routeData.orderedAddresses.forEach((address, index) => {
+    routeData.orderedRoute.forEach((routePoint, index) => {
         const step = document.createElement('div');
         step.className = 'route-step';
-        step.textContent = `${index + 1}. ${address}`;
+
+        const addressSpan = document.createElement('span');
+        addressSpan.className = 'route-step-address';
+        addressSpan.textContent = `${index + 1}. ${routePoint.address}`;
+
+        step.appendChild(addressSpan);
+
+        if (routePoint.travelTimeToPoint !== null) {
+            const timeSpan = document.createElement('span');
+            timeSpan.className = 'route-step-time';
+            const duration = formatDuration(routePoint.travelTimeToPoint);
+            timeSpan.textContent = `(+ ${duration.text})`;
+            step.appendChild(timeSpan);
+        }
+
         routeStepsList.appendChild(step);
     });
 

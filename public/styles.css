@@ -377,11 +377,19 @@ header p {
 }
 
 .route-step {
-    background: #f8fafc;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f7fafc;
     padding: 12px;
-    margin-bottom: 8px;
     border-radius: 8px;
-    border-left: 4px solid #3182ce;
+    margin-bottom: 8px;
+    border-left: 4px solid #4a90e2;
+}
+
+.route-step-time {
+    color: #718096;
+    font-size: 14px;
 }
 
 .route-actions {

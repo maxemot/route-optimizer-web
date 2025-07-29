@@ -290,19 +290,32 @@ app.post('/api/optimize-route', async (req, res) => {
         const distanceMatrix = await calculateMockDistanceMatrix(coordinates);
         const solution = solveTsp(distanceMatrix.duration, distanceMatrix.distance);
         
-        const orderedAddresses = [addresses[0]];
-        solution.path.forEach(index => { orderedAddresses.push(addresses[index]); });
-        orderedAddresses.push(addresses[0]);
+        const fullPathIndices = [0, ...solution.path, 0];
+
+        const orderedRoute = [];
+        for (let i = 0; i < fullPathIndices.length; i++) {
+            const currentIndex = fullPathIndices[i];
+            const previousIndex = i > 0 ? fullPathIndices[i-1] : null;
         
-        const yandexMapsUrl = 'https://yandex.ru/maps/?rtext=' + orderedAddresses.map(addr => encodeURIComponent(addr)).join('~') + '&rtt=auto';
+            const travelTimeToPoint = previousIndex !== null 
+                ? distanceMatrix.duration[previousIndex][currentIndex] 
+                : null;
+        
+            orderedRoute.push({
+                address: addresses[currentIndex],
+                travelTimeToPoint: travelTimeToPoint,
+            });
+        }
+        
+        const yandexMapsUrl = 'https://yandex.ru/maps/?rtext=' + orderedRoute.map(r => encodeURIComponent(r.address)).join('~') + '&rtt=auto';
 
         const result = {
-            orderedAddresses,
+            orderedRoute,
             totalDistance: formatDistance(solution.distance),
             totalDuration: formatDuration(solution.duration),
             yandexMapsUrl,
             calculatedAt: new Date().toISOString(),
-            deliveryIds: deliveryIds // Возвращаем исходные строковые ID
+            deliveryIds: deliveryIds
         };
 
         console.log(`✅ Маршрут построен: ${result.totalDistance.text}, ${result.totalDuration.text}`);
