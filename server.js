@@ -5,9 +5,9 @@ const fetch = require('node-fetch');
 const { kv } = require('@vercel/kv');
 const http = require('http');
 const { Server } = require("socket.io");
+const { calculateMockDistanceMatrix, formatDeliveryId, calculateStraightDistance } = require('./server_utils');
 
 // +++ НОВЫЕ ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ +++
-const formatDeliveryId = (id) => `Д-${String(id).padStart(4, '0')}`;
 const formatRouteId = (id) => `М-${String(id).padStart(4, '0')}`;
 const parseId = (formattedId) => parseInt(formattedId.split('-')[1], 10);
 const formatCreationDate = (isoString) => {
@@ -153,40 +153,6 @@ app.get('/api/routes/:id', async (req, res) => {
             return res.status(404).json({ error: 'Маршрут не найден' });
         }
         
-        // Обратная совместимость для старых маршрутов
-        if (!route.orderedRoute && route.orderedAddresses) {
-            console.log(` rebuilding route #${route.id} for backward compatibility...`);
-            const allDeliveries = await kv.get('deliveries') || [];
-            const startPoint = { address: "Поповка, Московская обл., 141892", coordinates: "37.298805 56.150459" };
-            
-            // Находим координаты для каждого адреса в маршруте
-            const pointsInRoute = route.orderedAddresses.map(addr => {
-                if (addr === startPoint.address) return startPoint;
-                return allDeliveries.find(d => d.address === addr);
-            }).filter(Boolean); // Убираем возможные null/undefined
-
-            const coordinates = pointsInRoute.map(p => p.coordinates);
-            const matrix = await calculateMockDistanceMatrix(coordinates);
-            const speedMps = 30 * 1000 / 3600;
-
-            // Восстанавливаем детализированный orderedRoute
-            route.orderedRoute = pointsInRoute.map((point, i) => {
-                if (i === 0) { // Первая точка - склад
-                    return { address: point.address, deliveryId: null, travelTimeToPoint: null, timeAtPoint: null };
-                }
-                const distance = matrix.distance[i-1][i];
-                const delivery = allDeliveries.find(d => d.id === point.id);
-
-                return {
-                    address: point.address,
-                    deliveryId: delivery ? formatDeliveryId(delivery.id) : null,
-                    travelTimeToPoint: Math.round((distance * 1.44) / speedMps),
-                    distanceToPointByRoad: distance * 1.44,
-                    timeAtPoint: delivery ? delivery.timeAtPoint : null
-                }
-            });
-        }
-
         if (route.totalDistance && !route.totalDistanceByRoad) {
             route.totalDistanceByRoad = route.totalDistance;
             delete route.totalDistance;
@@ -392,36 +358,6 @@ async function buildRouteFromChunk(chunk, startPoint, allDeliveries) {
     return result;
 }
 
-
-async function calculateMockDistanceMatrix(coordinates) {
-    const n = coordinates.length;
-    const distanceMatrix = Array(n).fill(0).map(() => Array(n).fill(Infinity));
-    const durationMatrix = Array(n).fill(0).map(() => Array(n).fill(Infinity));
-    for (let i = 0; i < n; i++) {
-        for (let j = 0; j < n; j++) {
-            if (i === j) {
-                distanceMatrix[i][j] = 0;
-                durationMatrix[i][j] = 0;
-                continue;
-            }
-            const coord1 = coordinates[i].split(' ').map(parseFloat);
-            const coord2 = coordinates[j].split(' ').map(parseFloat);
-            const distance = calculateStraightDistance(coord1[1], coord1[0], coord2[1], coord2[0]);
-            distanceMatrix[i][j] = distance;
-            durationMatrix[i][j] = Math.round(distance / 16.67); // ~60 km/h в м/с
-        }
-    }
-    return { distance: distanceMatrix, duration: durationMatrix };
-}
-
-function calculateStraightDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371000; // Radius of the earth in m
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
-}
 
 function solveTsp(timeMatrix, distanceMatrix) {
     const n = distanceMatrix.length;
