@@ -48,18 +48,21 @@ io.on('connection', (socket) => {
     
     // Обработчик для получения начальных данных
     socket.on('get_initial_data', async () => {
+        console.log('📨 Получен запрос get_initial_data');
         try {
             const deliveries = await kv.get('deliveries') || [];
+            console.log('📦 Данные из KV:', deliveries.length, 'доставок');
             const formattedDeliveries = deliveries.map(d => ({
                 ...d,
                 id: formatDeliveryId(d.id),
                 routeId: d.routeId ? formatRouteId(d.routeId) : null,
                 createdAt: formatCreationDate(d.createdAt)
             }));
+            console.log('✅ Отправляем данные клиенту:', formattedDeliveries.length, 'доставок');
             // Отправляем данные только этому клиенту
             socket.emit('deliveries_updated', formattedDeliveries);
         } catch (error) {
-            console.error('Ошибка при отправке начальных данных:', error);
+            console.error('❌ Ошибка при отправке начальных данных:', error);
         }
     });
 
