@@ -46,6 +46,23 @@ app.use(express.static(path.join(__dirname, 'public')));
 io.on('connection', (socket) => {
     console.log('🔌 Клиент подключен по WebSocket');
     
+    // Обработчик для получения начальных данных
+    socket.on('get_initial_data', async () => {
+        try {
+            const deliveries = await kv.get('deliveries') || [];
+            const formattedDeliveries = deliveries.map(d => ({
+                ...d,
+                id: formatDeliveryId(d.id),
+                routeId: d.routeId ? formatRouteId(d.routeId) : null,
+                createdAt: formatCreationDate(d.createdAt)
+            }));
+            // Отправляем данные только этому клиенту
+            socket.emit('deliveries_updated', formattedDeliveries);
+        } catch (error) {
+            console.error('Ошибка при отправке начальных данных:', error);
+        }
+    });
+
     socket.on('delete_deliveries', async (ids) => {
         try {
             const numericIds = ids.map(id => parseId(id));
