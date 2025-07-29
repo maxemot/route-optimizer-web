@@ -545,7 +545,7 @@ async function handleCreateRoute() {
 
 function showRouteResults(routeData, isCreating) {
     routeNumber.textContent = isCreating ? "Новый маршрут" : `Маршрут №${routeData.id}`;
-    deliveriesCount.textContent = routeData.deliveryIds ? routeData.deliveryIds.length : routeData.orderedAddresses.length - 2;
+    deliveriesCount.textContent = routeData.deliveryIds ? routeData.deliveryIds.length : routeData.orderedRoute.length - 2;
     totalDistance.textContent = routeData.totalDistance.text;
     totalDuration.textContent = routeData.totalDuration.text;
     
