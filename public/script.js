@@ -117,7 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td><input type="checkbox" class="row-checkbox" ${selectedDeliveries.has(delivery.id) ? 'checked' : ''}></td>
                 <td>${delivery.id}</td>
                 <td>${delivery.address}</td>
-                <td>${delivery.coordinates}</td>
+                <td class="coordinates-cell">${delivery.coordinates}</td>
                 <td><span class="status status-${delivery.status}">${getStatusText(delivery.status)}</span></td>
                 <td>${delivery.volume || '1.0'}</td>
                 <td>${delivery.timeAtPoint} мин</td>
@@ -477,7 +477,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
     
-    document.querySelectorAll('.close-btn').forEach(btn => {
+    document.querySelectorAll('.close').forEach(btn => {
         btn.addEventListener('click', (event) => {
             const modalId = event.target.closest('.modal').id;
             closeModal(modalId);
@@ -520,7 +520,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const statuses = {
             'new': 'Новая',
             'in-progress': 'В пути',
-            'delivered': 'Доставлена'
+            'delivered': 'Доставлена',
+            'ready': 'Готов'
         };
         return statuses[status] || status;
     }
