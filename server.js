@@ -7,19 +7,6 @@ const http = require('http');
 const { Server } = require("socket.io");
 const { calculateMockDistanceMatrix, formatDeliveryId, calculateStraightDistance } = require('./server_utils');
 
-// ВРЕМЕННЫЙ КОД ДЛЯ ПРОВЕРКИ
-async function listDeliveries() {
-  try {
-    const deliveries = await kv.get('deliveries');
-    console.log('--- СПИСОК ДОСТАВОК ---');
-    console.log(JSON.stringify(deliveries, null, 2));
-    console.log('-------------------------');
-  } catch (e) {
-    console.error('Не удалось получить доставки:', e);
-  }
-}
-// КОНЕЦ ВРЕМЕННОГО КОДА
-
 // +++ НОВЫЕ ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ +++
 const formatRouteId = (id) => `М-${String(id).padStart(4, '0')}`;
 const parseId = (formattedId) => parseInt(formattedId.split('-')[1], 10);
@@ -640,9 +627,8 @@ app.post('/api/routing', async (req, res) => {
 // Но для локальной разработки и для того, чтобы сокеты работали,
 // нам нужно его слушать.
 if (require.main === module) {
-    server.listen(PORT, async () => { // делаем коллбэк асинхронным
+    server.listen(PORT, () => {
         console.log(`🚀 Сервер запущен на порту ${PORT}`);
-        await listDeliveries(); // Вызываем функцию при старте
     });
 }
 
