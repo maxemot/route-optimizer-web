@@ -32,7 +32,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     socket.on('deliveries_updated', (updatedDeliveries) => {
-        deliveries = updatedDeliveries.map(d => ({ ...d, id: parseInt(d.id, 10) }));
+        deliveries = updatedDeliveries.map(d => {
+            const id = (typeof d.id === 'string' && d.id.startsWith('Д-'))
+              ? parseInt(d.id.split('-')[1], 10)
+              : d.id;
+            return { ...d, id: id };
+        });
         renderTable();
         updateSelectionState();
     });
