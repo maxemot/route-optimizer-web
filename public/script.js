@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- Глобальные переменные и константы ---
-    const deliveryTableBody = document.querySelector('#delivery-table tbody');
+    const deliveryTableBody = document.querySelector('#deliveries-tbody');
     const selectAllCheckbox = document.getElementById('select-all');
     const deleteDeliveriesBtn = document.getElementById('delete-deliveries-btn');
     const addDeliveryBtn = document.getElementById('add-delivery-btn');
