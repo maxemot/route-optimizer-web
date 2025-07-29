@@ -345,7 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ routes: routesToCreate }),
+            body: JSON.stringify(routesToCreate),
         })
         .then(response => {
             if (!response.ok) {
