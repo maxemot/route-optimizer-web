@@ -131,24 +131,27 @@ app.post('/api/routes', async (req, res) => {
 
 app.get('/api/routes/:id', async (req, res) => {
     try {
-        const { id } = req.params; // Получаем отформатированный ID, например "М-0003"
-        const numericId = parseId(id); // Превращаем его в число 3
-        if (isNaN(numericId)) {
-            return res.status(400).json({ error: 'Некорректный формат ID маршрута' });
+        const { id } = req.params; // id в формате "М-0001"
+        const numericId = parseId(id);
+
+        const allRoutes = await kv.get('routes') || [];
+        const route = allRoutes.find(r => r.id === numericId);
+
+        if (!route) {
+            return res.status(404).json({ error: 'Маршрут не найден' });
+        }
+        
+        // Добавляем недостающие поля для совместимости с модальным окном
+        if (route.totalDistance && !route.totalDistanceByRoad) {
+            route.totalDistanceByLine = route.totalDistance;
+            route.totalDistanceByRoad = formatDistance(route.totalDistance.value * 1.44);
+            delete route.totalDistance;
         }
 
-        const routes = await kv.get('routes') || [];
-        const route = routes.find(r => r.id === numericId);
-
-        if (route) {
-            // Отправляем на фронт, форматируя ID обратно в строку
-            res.json({
-                ...route,
-                id: formatRouteId(route.id)
-            });
-        } else {
-            res.status(404).json({ error: 'Маршрут не найден' });
-        }
+        res.json({
+            ...route,
+            id: formatRouteId(route.id)
+        });
     } catch (error) {
         console.error('Ошибка получения маршрута:', error);
         res.status(500).json({ error: 'Не удалось получить маршрут' });
