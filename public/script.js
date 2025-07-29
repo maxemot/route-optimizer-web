@@ -32,12 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     socket.on('deliveries_updated', (updatedDeliveries) => {
-        deliveries = updatedDeliveries.map(d => {
-            const id = (typeof d.id === 'string' && d.id.startsWith('Д-'))
-              ? parseInt(d.id.split('-')[1], 10)
-              : d.id;
-            return { ...d, id: id };
-        });
+        deliveries = updatedDeliveries;
         renderTable();
         updateSelectionState();
     });
@@ -59,22 +54,22 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        deliveries.sort((a, b) => a.id - b.id);
+        deliveries.sort((a, b) => a.id.localeCompare(b.id));
 
         deliveries.forEach(delivery => {
             const row = document.createElement('tr');
             row.dataset.deliveryId = delivery.id;
-            if (selectedDeliveries.has(String(delivery.id))) {
+            if (selectedDeliveries.has(delivery.id)) {
                 row.classList.add('selected');
             }
 
             row.innerHTML = `
-                <td><input type="checkbox" class="row-checkbox" ${selectedDeliveries.has(String(delivery.id)) ? 'checked' : ''}></td>
-                <td>${formatDeliveryId(delivery.id)}</td>
+                <td><input type="checkbox" class="row-checkbox" ${selectedDeliveries.has(delivery.id) ? 'checked' : ''}></td>
+                <td>${delivery.id}</td>
                 <td>${delivery.address}</td>
                 <td>${delivery.timeAtPoint} мин</td>
                 <td><span class="status status-${delivery.status}">${getStatusText(delivery.status)}</span></td>
-                <td class="route-id-cell">${delivery.routeId ? formatRouteId(delivery.routeId) : '—'}</td>
+                <td class="route-id-cell">${delivery.routeId || '—'}</td>
                 <td>${delivery.createdAt}</td>
             `;
             deliveryTableBody.appendChild(row);
@@ -135,7 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Управление состоянием кнопок
         const hasNew = Array.from(selectedDeliveries).some(id => {
-            const delivery = deliveries.find(d => d.id === parseInt(id));
+            const delivery = deliveries.find(d => d.id === id);
             return delivery && delivery.status === 'new';
         });
 
@@ -143,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
         deleteDeliveriesBtn.disabled = selectedCount === 0;
         
         const hasRoute = Array.from(selectedDeliveries).some(id => {
-            const delivery = deliveries.find(d => d.id === parseInt(id));
+            const delivery = deliveries.find(d => d.id === id);
             return delivery && delivery.routeId;
         });
         
@@ -181,7 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     async function handleDeleteDeliveries() {
-        const idsToDelete = Array.from(selectedDeliveries).map(id => parseInt(id, 10));
+        const idsToDelete = Array.from(selectedDeliveries);
         if (idsToDelete.length === 0) {
             showToast('Не выбрано ни одной доставки для удаления.', 'warning');
             return;
@@ -211,7 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function optimizeSelectedRoute() {
-        const deliveryIds = Array.from(selectedDeliveries).map(id => parseInt(id, 10));
+        const deliveryIds = Array.from(selectedDeliveries);
         if (deliveryIds.length === 0) {
             showToast('Выберите доставки для оптимизации.', 'warning');
             return;
@@ -243,7 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleDeleteRoutes() {
         const routeIdsToDelete = new Set();
         selectedDeliveries.forEach(deliveryId => {
-            const delivery = deliveries.find(d => d.id === parseInt(deliveryId));
+            const delivery = deliveries.find(d => d.id === deliveryId);
             if (delivery && delivery.routeId) {
                 routeIdsToDelete.add(delivery.routeId);
             }
