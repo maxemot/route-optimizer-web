@@ -155,8 +155,38 @@ app.get('/api/routes/:id', async (req, res) => {
         
         // Обратная совместимость для старых маршрутов
         if (!route.orderedRoute && route.orderedAddresses) {
-            route.orderedRoute = route.orderedAddresses.map(address => ({ address, travelTimeToPoint: null }));
+            console.log(` rebuilding route #${route.id} for backward compatibility...`);
+            const allDeliveries = await kv.get('deliveries') || [];
+            const startPoint = { address: "Поповка, Московская обл., 141892", coordinates: "37.298805 56.150459" };
+            
+            // Находим координаты для каждого адреса в маршруте
+            const pointsInRoute = route.orderedAddresses.map(addr => {
+                if (addr === startPoint.address) return startPoint;
+                return allDeliveries.find(d => d.address === addr);
+            }).filter(Boolean); // Убираем возможные null/undefined
+
+            const coordinates = pointsInRoute.map(p => p.coordinates);
+            const matrix = await calculateMockDistanceMatrix(coordinates);
+            const speedMps = 30 * 1000 / 3600;
+
+            // Восстанавливаем детализированный orderedRoute
+            route.orderedRoute = pointsInRoute.map((point, i) => {
+                if (i === 0) { // Первая точка - склад
+                    return { address: point.address, deliveryId: null, travelTimeToPoint: null, timeAtPoint: null };
+                }
+                const distance = matrix.distance[i-1][i];
+                const delivery = allDeliveries.find(d => d.id === point.id);
+
+                return {
+                    address: point.address,
+                    deliveryId: delivery ? formatDeliveryId(delivery.id) : null,
+                    travelTimeToPoint: Math.round((distance * 1.44) / speedMps),
+                    distanceToPointByRoad: distance * 1.44,
+                    timeAtPoint: delivery ? delivery.timeAtPoint : null
+                }
+            });
         }
+
         if (route.totalDistance && !route.totalDistanceByRoad) {
             route.totalDistanceByRoad = route.totalDistance;
             delete route.totalDistance;
