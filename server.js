@@ -367,46 +367,76 @@ function calculateStraightDistance(lat1, lon1, lat2, lon2) {
 }
 
 function solveTsp(timeMatrix, distanceMatrix) {
-    const n = timeMatrix.length;
+    const n = distanceMatrix.length;
     if (n <= 1) return { path: [], duration: 0, distance: 0 };
-    const waypointIndices = Array.from({length: n - 1}, (_, i) => i + 1);
-    if (n === 2) return { path: [1], duration: timeMatrix[0][1] + timeMatrix[1][0], distance: distanceMatrix[0][1] + distanceMatrix[1][0] };
 
-    const permutations = getPermutations(waypointIndices);
-    let bestPath = [], minDuration = Infinity;
+    // 1. Nearest Neighbor
+    let tour = [0];
+    let unvisited = new Set(Array.from({ length: n - 1 }, (_, i) => i + 1));
 
-    for (const p of permutations) {
-        let currentDuration = timeMatrix[0][p[0]];
-        for (let i = 0; i < p.length - 1; i++) { currentDuration += timeMatrix[p[i]][p[i+1]]; }
-        currentDuration += timeMatrix[p[p.length - 1]][0];
-        if (currentDuration < minDuration) {
-            minDuration = currentDuration;
-            bestPath = p;
-        }
-    }
-    let bestDistance = distanceMatrix[0][bestPath[0]];
-    for (let i = 0; i < bestPath.length - 1; i++) { bestDistance += distanceMatrix[bestPath[i]][bestPath[i+1]]; }
-    bestDistance += distanceMatrix[bestPath[bestPath.length - 1]][0];
-    if (minDuration === Infinity) {
-        throw new Error("Невозможно построить маршрут");
-    }
-    return { path: bestPath, duration: minDuration, distance: bestDistance };
-}
+    let currentPoint = 0;
+    while (unvisited.size > 0) {
+        let nearestPoint = -1;
+        let minDistance = Infinity;
 
-function getPermutations(inputArray) {
-    const result = [];
-    const permute = (arr, memo = []) => {
-        if (arr.length === 0) { result.push(memo); } 
-        else {
-            for (let i = 0; i < arr.length; i++) {
-                let curr = arr.slice();
-                let next = curr.splice(i, 1);
-                permute(curr.slice(), memo.concat(next));
+        for (const point of unvisited) {
+            if (distanceMatrix[currentPoint][point] < minDistance) {
+                minDistance = distanceMatrix[currentPoint][point];
+                nearestPoint = point;
             }
         }
-    };
-    permute(inputArray);
-    return result;
+        tour.push(nearestPoint);
+        unvisited.delete(nearestPoint);
+        currentPoint = nearestPoint;
+    }
+
+    // 2. 2-opt Improvement
+    let improved = true;
+    while (improved) {
+        improved = false;
+        for (let i = 0; i < n - 2; i++) {
+            for (let j = i + 2; j < n; j++) {
+                const i_ = tour[i];
+                const i1_ = tour[i + 1];
+                const j_ = tour[j];
+                const j1_ = tour[(j + 1) % n];
+
+                const oldDistance = distanceMatrix[i_][i1_] + distanceMatrix[j_][j1_];
+                const newDistance = distanceMatrix[i_][j_] + distanceMatrix[i1_][j1_];
+                
+                if (newDistance < oldDistance) {
+                    const segment = tour.slice(i + 1, j + 1);
+                    segment.reverse();
+                    tour = tour.slice(0, i + 1).concat(segment).concat(tour.slice(j + 1));
+                    improved = true;
+                }
+            }
+        }
+    }
+    
+    // The tour starts with the depot (0), we need to return the path of waypoints
+    const waypointTour = tour.slice(1);
+    
+    // Recalculate final distance and duration
+    let finalDistance = 0;
+    let finalDuration = 0;
+    
+    // From depot to first waypoint
+    finalDistance += distanceMatrix[0][waypointTour[0]];
+    finalDuration += timeMatrix[0][waypointTour[0]];
+
+    for (let i = 0; i < waypointTour.length - 1; i++) {
+        finalDistance += distanceMatrix[waypointTour[i]][waypointTour[i+1]];
+        finalDuration += timeMatrix[waypointTour[i]][waypointTour[i+1]];
+    }
+
+    // From last waypoint back to depot
+    finalDistance += distanceMatrix[waypointTour[waypointTour.length - 1]][0];
+
+    const speedMps = 30 * 1000 / 3600;
+    const totalDuration = Math.round((finalDistance * 1.44) / speedMps);
+
+    return { path: waypointTour, duration: totalDuration, distance: finalDistance };
 }
 
 function formatDistance(meters) {
