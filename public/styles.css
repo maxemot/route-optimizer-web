@@ -261,9 +261,12 @@ header p {
     background: white;
     margin: 5% auto;
     border-radius: 12px;
-    max-width: 720px;
+    max-width: 900px;
+    width: 90%;
     max-height: 90vh;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Чтобы футер не прокручивался */
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
 }
 
@@ -295,6 +298,8 @@ header p {
 
 .modal-body {
     padding: 24px;
+    overflow-y: auto; /* Только эта часть будет скроллиться */
+    flex-grow: 1;
 }
 
 .modal-footer {
@@ -545,6 +550,9 @@ input[type="checkbox"] {
 
 /* Разделители и заголовки в модальном окне */
 .route-chunk-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-top: 24px;
     margin-bottom: 12px;
     font-size: 1.2rem;
@@ -554,6 +562,11 @@ input[type="checkbox"] {
 }
 .route-chunk-title:first-child {
     margin-top: 0;
+}
+
+.route-chunk-title .btn-map {
+    padding: 6px 12px;
+    font-size: 14px;
 }
 
 .route-chunk-summary {

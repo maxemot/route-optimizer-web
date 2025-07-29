@@ -555,18 +555,26 @@ function showRouteResults(routesData, isCreating) {
     routeNumber.textContent = isCreating ? "Предпросмотр маршрутов" : `Маршрут №${routesData.id}`;
     createRouteBtn.textContent = isMultiple ? "Создать маршруты" : "Создать маршрут";
 
-    // Скрываем общие данные, если маршрутов несколько
-    document.getElementById('route-summary').style.display = isMultiple ? 'none' : 'flex';
+    // Скрываем общие данные в шапке, если маршрутов несколько (или всегда, для чистоты)
+    document.getElementById('route-summary').style.display = 'none';
 
     const routes = Array.isArray(routesData) ? routesData : [routesData];
 
     routes.forEach((routeData, index) => {
-        if (isMultiple) {
-            const routeTitle = document.createElement('h3');
-            routeTitle.className = 'route-chunk-title';
-            routeTitle.textContent = `Маршрут ${index + 1}`;
-            routeStepsList.appendChild(routeTitle);
-        }
+        const routeTitleContainer = document.createElement('div');
+        routeTitleContainer.className = 'route-chunk-title';
+
+        const routeTitle = document.createElement('h3');
+        routeTitle.textContent = `Маршрут ${index + 1}`;
+
+        const yandexBtn = document.createElement('button');
+        yandexBtn.className = 'btn btn-primary btn-map'; // Синяя кнопка
+        yandexBtn.textContent = 'Карта';
+        yandexBtn.onclick = () => openRouteInYandexMaps(routeData.yandexMapsUrl);
+
+        routeTitleContainer.appendChild(routeTitle);
+        routeTitleContainer.appendChild(yandexBtn);
+        routeStepsList.appendChild(routeTitleContainer);
 
         // Блок с информацией о маршруте (длительность, расстояние)
         const summaryDiv = document.createElement('div');
@@ -610,13 +618,6 @@ function showRouteResults(routesData, isCreating) {
 
             routeStepsList.appendChild(step);
         });
-
-        // Кнопка "Открыть на карте" для каждого маршрута
-        const yandexBtn = document.createElement('button');
-        yandexBtn.className = 'btn btn-secondary';
-        yandexBtn.innerHTML = `<img src="https://yastatic.net/iconins/_/7pJs3KqM62P24NAaD5ejwGZ_DqY.ico" alt="Yandex" class="button-icon"> Открыть на карте`;
-        yandexBtn.onclick = () => openRouteInYandexMaps(routeData.yandexMapsUrl);
-        routeStepsList.appendChild(yandexBtn);
     });
 
     // Показываем/скрываем основную кнопку создания
