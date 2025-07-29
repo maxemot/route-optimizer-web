@@ -26,13 +26,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Загрузка данных через REST API ---
     async function loadDeliveries() {
         try {
-            console.log('🔄 Загружаем данные через REST API...');
             const response = await fetch('/api/deliveries');
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             const data = await response.json();
-            console.log('✅ Получены данные через REST API:', data);
             deliveries = data;
             renderTable();
             updateSelectionState();
@@ -54,7 +52,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     socket.on('deliveries_updated', (updatedDeliveries) => {
-        console.log('Получены данные по WebSocket (deliveries_updated):', updatedDeliveries);
         deliveries = updatedDeliveries;
         renderTable();
         updateSelectionState();
@@ -237,8 +234,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        console.log("Оптимизация для ID:", deliveryIds);
-
         try {
             const response = await fetch('/api/optimize-route', {
                 method: 'POST',
@@ -249,7 +244,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) {
                 throw new Error(data.message || 'Ошибка на сервере');
             }
-            console.log("Ответ от сервера:", data);
             currentRouteData = data; 
             showRouteResults(data);
         } catch (error) {
@@ -302,7 +296,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handleCreateRoute() {
         const routesToCreate = currentRouteData;
-        console.log("Отправка данных для создания маршрута:", routesToCreate);
     
         if (!routesToCreate || routesToCreate.length === 0) {
             showToast('Нет данных о маршруте для создания.', 'error');

@@ -48,16 +48,13 @@ io.on('connection', async (socket) => {
     
     // Автоматически отправляем данные при подключении
     try {
-        console.log('📨 Автоматическая отправка данных при подключении');
         const deliveries = await kv.get('deliveries') || [];
-        console.log('📦 Данные из KV:', deliveries.length, 'доставок');
         const formattedDeliveries = deliveries.map(d => ({
             ...d,
             id: formatDeliveryId(d.id),
             routeId: d.routeId ? formatRouteId(d.routeId) : null,
             createdAt: formatCreationDate(d.createdAt)
         }));
-        console.log('✅ Отправляем данные клиенту:', formattedDeliveries.length, 'доставок');
         socket.emit('deliveries_updated', formattedDeliveries);
     } catch (error) {
         console.error('❌ Ошибка при автоматической отправке данных:', error);
@@ -65,17 +62,14 @@ io.on('connection', async (socket) => {
     
     // Обработчик для получения начальных данных (оставляем как резервный)
     socket.on('get_initial_data', async () => {
-        console.log('📨 Получен запрос get_initial_data');
         try {
             const deliveries = await kv.get('deliveries') || [];
-            console.log('📦 Данные из KV:', deliveries.length, 'доставок');
             const formattedDeliveries = deliveries.map(d => ({
                 ...d,
                 id: formatDeliveryId(d.id),
                 routeId: d.routeId ? formatRouteId(d.routeId) : null,
                 createdAt: formatCreationDate(d.createdAt)
             }));
-            console.log('✅ Отправляем данные клиенту:', formattedDeliveries.length, 'доставок');
             // Отправляем данные только этому клиенту
             socket.emit('deliveries_updated', formattedDeliveries);
         } catch (error) {
