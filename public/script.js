@@ -572,24 +572,48 @@ function showRouteResults(routesData, isCreating) {
         const summaryDiv = document.createElement('div');
         summaryDiv.className = 'route-chunk-summary';
         summaryDiv.innerHTML = `
-            <span>Общее расстояние: <strong>${routeData.totalDistanceByRoad.text}</strong></span>
-            <span>Общее время: <strong>${routeData.totalDuration.text}</strong></span>
+            <span>Расстояние: <strong>${routeData.totalDistanceByRoad.text}</strong>,</span>
+            <span>Время: <strong>${routeData.totalDuration.text}</strong></span>
         `;
         routeStepsList.appendChild(summaryDiv);
 
         routeData.orderedRoute.forEach((routePoint, pointIndex) => {
+            // Пропускаем первую (склад) и последнюю (склад) точки для нумерации
+            if (pointIndex === 0 || pointIndex === routeData.orderedRoute.length - 1) {
+                 const step = document.createElement('div');
+                 step.className = 'route-step route-step-depot'; // Особый класс для склада
+                 const addressSpan = document.createElement('span');
+                 addressSpan.className = 'route-step-address';
+                 addressSpan.textContent = `📍 ${routePoint.address}`;
+                 step.appendChild(addressSpan);
+                 routeStepsList.appendChild(step);
+                 return;
+            }
+
             const step = document.createElement('div');
             step.className = 'route-step';
+            
             const addressSpan = document.createElement('span');
             addressSpan.className = 'route-step-address';
-            addressSpan.textContent = `${pointIndex + 1}. ${routePoint.address}`;
+            addressSpan.textContent = `${pointIndex}. ${routePoint.address}`;
+
             step.appendChild(addressSpan);
+
+            if (routePoint.travelTimeToPoint !== null) {
+                const timeSpan = document.createElement('span');
+                timeSpan.className = 'route-step-time';
+                const distanceText = formatDistance(routePoint.distanceToPointByRoad).text;
+                const durationText = formatDuration(routePoint.travelTimeToPoint).text;
+                timeSpan.textContent = `${distanceText}, ${durationText}`;
+                step.appendChild(timeSpan);
+            }
+
             routeStepsList.appendChild(step);
         });
 
         // Кнопка "Открыть на карте" для каждого маршрута
         const yandexBtn = document.createElement('button');
-        yandexBtn.className = 'button secondary-button';
+        yandexBtn.className = 'btn btn-secondary';
         yandexBtn.innerHTML = `<img src="https://yastatic.net/iconins/_/7pJs3KqM62P24NAaD5ejwGZ_DqY.ico" alt="Yandex" class="button-icon"> Открыть на карте`;
         yandexBtn.onclick = () => openRouteInYandexMaps(routeData.yandexMapsUrl);
         routeStepsList.appendChild(yandexBtn);

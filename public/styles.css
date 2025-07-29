@@ -261,7 +261,7 @@ header p {
     background: white;
     margin: 5% auto;
     border-radius: 12px;
-    max-width: 600px;
+    max-width: 720px;
     max-height: 90vh;
     overflow-y: auto;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
@@ -541,4 +541,33 @@ input[type="checkbox"] {
 .delivery-number {
     font-weight: 600;
     color: #2d3748;
+} 
+
+/* Разделители и заголовки в модальном окне */
+.route-chunk-title {
+    margin-top: 24px;
+    margin-bottom: 12px;
+    font-size: 1.2rem;
+    color: #2d3748;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 8px;
+}
+.route-chunk-title:first-child {
+    margin-top: 0;
+}
+
+.route-chunk-summary {
+    margin-bottom: 12px;
+    font-size: 14px;
+    color: #4a5568;
+}
+
+.route-chunk-summary span {
+    margin-right: 16px;
+}
+
+.button-icon {
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
 } 
