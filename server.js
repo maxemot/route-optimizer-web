@@ -300,10 +300,15 @@ app.post('/api/optimize-route', async (req, res) => {
             const travelTimeToPoint = previousIndex !== null 
                 ? distanceMatrix.duration[previousIndex][currentIndex] 
                 : null;
+            
+            const travelDistanceToPoint = previousIndex !== null
+                ? distanceMatrix.distance[previousIndex][currentIndex]
+                : null;
         
             orderedRoute.push({
                 address: addresses[currentIndex],
                 travelTimeToPoint: travelTimeToPoint,
+                travelDistanceToPoint: travelDistanceToPoint,
             });
         }
         
