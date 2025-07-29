@@ -23,12 +23,34 @@ document.addEventListener('DOMContentLoaded', () => {
     const openYandexMapsBtn = document.getElementById('open-yandex-maps');
     const routeError = document.getElementById('route-error');
 
-    // --- Сокеты ---
-    const socket = io(); // Указываем транспорт
+    // --- Загрузка данных через REST API ---
+    async function loadDeliveries() {
+        try {
+            console.log('🔄 Загружаем данные через REST API...');
+            const response = await fetch('/api/deliveries');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            console.log('✅ Получены данные через REST API:', data);
+            deliveries = data;
+            renderTable();
+            updateSelectionState();
+        } catch (error) {
+            console.error('❌ Ошибка загрузки данных:', error);
+            // Показываем сообщение об ошибке в таблице
+            deliveryTableBody.innerHTML = '<tr><td colspan="9" class="text-center">Ошибка загрузки данных</td></tr>';
+        }
+    }
+
+    // Загружаем данные при старте
+    loadDeliveries();
+
+    // --- Сокеты (оставляем для real-time обновлений) ---
+    const socket = io();
 
     socket.on('connect', () => {
         console.log('Соединение с сервером установлено');
-        socket.emit('get_initial_data');
     });
 
     socket.on('deliveries_updated', (updatedDeliveries) => {
