@@ -62,19 +62,6 @@ function initializeWebSocket() {
 
     socket.on('connect', () => {
         console.log('✅ WebSocket-соединение установлено');
-        // Как только соединение установлено, разблокируем кнопку
-        // Но! Только если есть что удалять (выбранные элементы)
-        updateSelectionState();
-    });
-
-    socket.on('reconnect_attempt', () => {
-        console.log('🔁 Попытка переподключения WebSocket...');
-        deleteDeliveriesBtn.disabled = true; // Блокируем на время переподключения
-    });
-
-    socket.on('disconnect', () => {
-        console.warn('❌ WebSocket-соединение разорвано');
-        deleteDeliveriesBtn.disabled = true; // Блокируем кнопку при разрыве
     });
 
     socket.on('new_delivery', (newDelivery) => {
@@ -119,10 +106,14 @@ function initializeWebSocket() {
         });
         updateUI(); // Обновляем счетчики и состояние кнопок
     });
-
+    
     socket.on('delete_error', (errorMessage) => {
         console.error('Ошибка удаления:', errorMessage);
         alert(errorMessage);
+    });
+
+    socket.on('disconnect', () => {
+        console.warn('❌ WebSocket-соединение разорвано');
     });
 }
 
@@ -291,13 +282,13 @@ async function saveDelivery() {
         if (!response.ok) {
             throw new Error('Ошибка при сохранении доставки на сервере');
         }
-
+        
         const savedDelivery = await response.json(); // Получаем созданную доставку с ID
 
         // Отрисовка теперь происходит через WebSocket, поэтому этот блок не нужен.
         // Сервер отправит событие 'new_delivery' всем клиентам (включая этого),
         // и доставка будет добавлена в таблицу в обработчике socket.on('new_delivery').
-
+        
         hideLoader();
         closeModal(deliveryModal);
         updateUI();
@@ -406,7 +397,7 @@ function updateSelectionState(deliveries) { // deliveries необязателе
 
     // Управляем доступностью кнопки оптимизации
     optimizeRouteBtn.disabled = checkedBoxes.length < 1;
-    deleteDeliveriesBtn.disabled = checkedBoxes.length === 0 || !socket || !socket.connected;
+    deleteDeliveriesBtn.disabled = checkedBoxes.length === 0;
 
     // Выделяем выбранные строки
     checkboxes.forEach(checkbox => {
@@ -428,14 +419,14 @@ async function handleDeleteSelected() {
     if (checkedBoxes.length === 0) {
         return;
     }
-
+    
     if (!confirm(`Вы уверены, что хотите удалить ${checkedBoxes.length} доставок?`)) {
         return;
     }
-
+    
     // ID теперь строки (напр. "Д-0007"), parseInt не нужен.
     // Сервер ожидает массив числовых ID, но бэкенд будет парсить строки.
-    // ОШИБКА: на самом деле, сокет-обработчик на сервере не парсит ID.
+    // ОШИБКА: на самом деле, сокет-обработчик на сервере не парсит ID. 
     // Нужно отправлять числовые ID. Но фронтенд их не знает.
     // Давайте исправим это: будем хранить числовой ID в другом data-атрибуте.
     // Это изменение мы внесем в createDeliveryRow. А здесь пока оставим как есть,
@@ -444,9 +435,9 @@ async function handleDeleteSelected() {
     // Давайте пока отправлять строковые ID, а на сервере их парсить.
     // Это проще, чем менять фронтенд.
     const idsToDelete = Array.from(checkedBoxes).map(cb => cb.closest('tr').dataset.deliveryId);
-
+    
     // Используем существующее соединение для отправки события
-    if (socket && socket.connected) {
+    if (socket && socket.connected) { // Улучшенная проверка
         socket.emit('delete_deliveries', idsToDelete);
     } else {
         console.error('Сокет не инициализирован или не подключен.');
@@ -543,7 +534,7 @@ function showRouteResults(routeData, isCreating) {
     deliveriesCount.textContent = routeData.deliveryIds ? routeData.deliveryIds.length : routeData.orderedAddresses.length - 2;
     totalDistance.textContent = routeData.totalDistance.text;
     totalDuration.textContent = routeData.totalDuration.text;
-
+    
     // Показываем/скрываем кнопки
     createRouteBtn.style.display = isCreating ? 'inline-block' : 'none';
     openYandexMapsBtn.style.display = routeData.yandexMapsUrl ? 'inline-block' : 'none';

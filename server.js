@@ -5,7 +5,6 @@ const fetch = require('node-fetch');
 const { kv } = require('@vercel/kv');
 const http = require('http');
 const { Server } = require("socket.io");
-const deliveryHandlers = require('./server-handlers');
 
 // +++ НОВЫЕ ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ +++
 const formatDeliveryId = (id) => `Д-${String(id).padStart(4, '0')}`;
@@ -23,18 +22,12 @@ const formatCreationDate = (isoString) => {
 };
 
 const app = express();
-const serverHttp = http.createServer(app);
-const io = new Server(serverHttp, {
+const server = http.createServer(app);
+const io = new Server(server, {
     cors: {
         origin: "*",
         methods: ["GET", "POST"]
     }
-});
-
-// --- Инициализация WebSocket ---
-io.on('connection', (socket) => {
-    console.log('🔌 Клиент подключен:', socket.id);
-    deliveryHandlers(io, socket); // Передаем управление в новый модуль
 });
 
 const YANDEX_API_KEY = process.env.YANDEX_API_KEY || "7726ddb0-76da-4747-8007-d84dfe2fb93f";
@@ -46,6 +39,34 @@ app.use(express.json());
 
 // Раздача статических файлов из папки 'public'
 app.use(express.static(path.join(__dirname, 'public')));
+
+io.on('connection', (socket) => {
+    console.log('🔌 Клиент подключен по WebSocket');
+    
+    socket.on('delete_deliveries', async (ids) => {
+        try {
+            // Парсим строковые ID ("Д-xxxx") в числовые
+            const numericIds = ids.map(id => parseId(id));
+            if (numericIds.some(isNaN)) {
+                throw new Error("Получены некорректные ID для удаления");
+            }
+
+            const deliveries = await kv.get('deliveries') || [];
+            const updatedDeliveries = deliveries.filter(d => !numericIds.includes(d.id));
+            await kv.set('deliveries', updatedDeliveries);
+
+            console.log(`🗑️ Удалены доставки с ID: ${numericIds.join(', ')}`);
+            io.emit('deliveries_deleted', ids); // Обратно отправляем строковые ID, которые получил клиент
+        } catch (error) {
+            console.error('Ошибка удаления доставок:', error);
+            socket.emit('delete_error', 'Не удалось удалить доставки на сервере');
+        }
+    });
+
+    socket.on('disconnect', () => {
+        console.log('🔌 Клиент отключен');
+    });
+});
 
 app.post('/api/routes', async (req, res) => {
     try {
@@ -456,12 +477,10 @@ app.post('/api/routing', async (req, res) => {
 });
 
 
-// --- Запуск сервера ---
-if (require.main === module) {
-    const PORT = process.env.PORT || 3000;
-    serverHttp.listen(PORT, () => {
-        console.log(`🚀 Сервер запущен на порту ${PORT}`);
-    });
-}
+/*
+server.listen(PORT, () => {
+    console.log(`🚀 Сервер запущен на порту ${PORT}`);
+});
+*/
 
-module.exports = { app }; // Экспортируем только app
+module.exports = server;
