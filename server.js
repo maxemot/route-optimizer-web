@@ -85,14 +85,15 @@ app.post('/api/routes', async (req, res) => {
         const deliveriesToUpdate = new Map();
 
         for (const routeData of routesToCreate) {
-            const { deliveryIds, orderedRoute, totalDistanceByRoad, totalDuration, yandexMapsUrl } = routeData;
+            const { deliveryIds, orderedRoute, totalDistanceByRoad, totalDistanceByLine, totalDuration, yandexMapsUrl } = routeData;
             const numericDeliveryIds = deliveryIds.map(id => parseId(id));
             
             const newRoute = {
                 id: nextRouteId,
                 deliveryIds: numericDeliveryIds,
-                orderedAddresses: orderedRoute.map(r => r.address),
-                totalDistance: totalDistanceByRoad,
+                orderedRoute: orderedRoute,
+                totalDistanceByRoad: totalDistanceByRoad,
+                totalDistanceByLine: totalDistanceByLine,
                 totalDuration: totalDuration,
                 yandexMapsUrl,
                 createdAt: new Date().toISOString()
@@ -152,10 +153,12 @@ app.get('/api/routes/:id', async (req, res) => {
             return res.status(404).json({ error: 'Маршрут не найден' });
         }
         
-        // Добавляем недостающие поля для совместимости с модальным окном
+        // Обратная совместимость для старых маршрутов
+        if (!route.orderedRoute && route.orderedAddresses) {
+            route.orderedRoute = route.orderedAddresses.map(address => ({ address, travelTimeToPoint: null }));
+        }
         if (route.totalDistance && !route.totalDistanceByRoad) {
-            route.totalDistanceByLine = route.totalDistance;
-            route.totalDistanceByRoad = formatDistance(route.totalDistance.value * 1.44);
+            route.totalDistanceByRoad = route.totalDistance;
             delete route.totalDistance;
         }
 
