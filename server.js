@@ -207,13 +207,15 @@ app.delete('/api/routes', async (req, res) => {
             return res.status(400).json({ message: 'Необходимо предоставить массив ID маршрутов для удаления.' });
         }
 
+        const numericRouteIds = routeIds.map(id => parseId(id));
+
         const allRoutes = await kv.get('routes') || [];
-        const routesToKeep = allRoutes.filter(route => !routeIds.includes(route.id));
+        const routesToKeep = allRoutes.filter(route => !numericRouteIds.includes(route.id));
         await kv.set('routes', routesToKeep);
 
         const allDeliveries = await kv.get('deliveries') || [];
         const updatedDeliveries = allDeliveries.map(delivery => {
-            if (delivery.routeId && routeIds.includes(delivery.routeId)) {
+            if (delivery.routeId && numericRouteIds.includes(delivery.routeId)) {
                 return {
                     ...delivery,
                     routeId: null,
@@ -223,10 +225,8 @@ app.delete('/api/routes', async (req, res) => {
             return delivery;
         });
         await kv.set('deliveries', updatedDeliveries);
-
-        io.emit('deliveries_updated', updatedDeliveries);
         
-        console.log(`Удаленные маршруты: ${routeIds.join(', ')}. Связанные доставки обновлены.`);
+        console.log(`Удаленные маршруты: ${numericRouteIds.join(', ')}. Связанные доставки обновлены.`);
         res.status(200).json({ 
             message: 'Маршруты успешно удалены', 
             deletedCount: allRoutes.length - routesToKeep.length 

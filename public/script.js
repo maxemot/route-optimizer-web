@@ -320,6 +320,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     showToast(`Успешно удалено ${result.deletedCount} маршрут(ов).`);
                     selectedDeliveries.clear();
                     updateSelectionState();
+                    // Перезагружаем данные, чтобы увидеть изменения
+                    loadDeliveries();
                 } else {
                     throw new Error(result.message);
                 }
