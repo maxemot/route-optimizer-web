@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const routeError = document.getElementById('route-error');
 
     // --- Сокеты ---
-    const socket = io();
+    const socket = io({ transports: ['websocket'] }); // Указываем транспорт
 
     socket.on('connect', () => {
         console.log('Соединение с сервером установлено');
