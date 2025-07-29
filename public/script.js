@@ -376,6 +376,15 @@ function truncateText(text, maxLength) {
     return text.substring(0, maxLength) + '...';
 }
 
+function formatDuration(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    let text = '';
+    if (hours > 0) text += `${hours} ч `;
+    if (minutes > 0) text += `${minutes} мин`;
+    return { value: seconds, text: text.trim() || 'меньше минуты' };
+}
+
 // Управление выбором
 function toggleSelectAll() {
     const checkboxes = document.querySelectorAll('.delivery-checkbox');
