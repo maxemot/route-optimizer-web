@@ -15,8 +15,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Модальные окна
     const modals = {
-        'add-delivery-modal': document.getElementById('add-delivery-modal'),
-        'route-results-modal': document.getElementById('route-results-modal'),
+        'add-delivery-modal': document.getElementById('delivery-modal'),
+        'route-results-modal': document.getElementById('route-modal'),
     };
     const routeSummary = document.getElementById('route-summary');
     const routeStepsList = document.getElementById('route-steps-list');
