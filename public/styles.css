@@ -266,16 +266,23 @@ header p {
     max-height: 90vh;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow-y: auto; /* Весь контент теперь скроллится */
 }
 
 .modal-header, .modal-footer {
     flex-shrink: 0; /* Шапка и футер не сжимаются */
 }
 
+.modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
 .modal-body {
     padding: 24px;
-    overflow-y: auto;
 }
 
 .modal-footer {
@@ -284,6 +291,9 @@ header p {
     display: flex;
     gap: 12px;
     justify-content: flex-end;
+    position: sticky; /* Закрепляем футер */
+    bottom: 0;
+    background: white; /* Фон, чтобы контент не просвечивал */
 }
 
 /* Формы */
