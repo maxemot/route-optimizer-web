@@ -44,26 +44,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Загружаем данные при старте
     loadDeliveries();
 
-    // --- Сокеты (оставляем для real-time обновлений) ---
-    const socket = io();
-
-    socket.on('connect', () => {
-        console.log('Соединение с сервером установлено');
-    });
-
-    socket.on('deliveries_updated', (updatedDeliveries) => {
-        deliveries = updatedDeliveries;
-        renderTable();
-        updateSelectionState();
-    });
-
-    socket.on('release_time_updated', (releaseTime) => {
-        document.getElementById('release-time-display').textContent = `Сборка проекта от: ${new Date(releaseTime).toLocaleString()}`;
-    });
-
-    socket.on('disconnect', () => {
-        console.log('Соединение с сервером потеряно');
-    });
+    // --- Сокеты отключены в продакшене (проблемы с Vercel serverless) ---
+    // const socket = io();
+    // socket.on('connect', () => { console.log('Соединение с сервером установлено'); });
+    // socket.on('deliveries_updated', (updatedDeliveries) => { deliveries = updatedDeliveries; renderTable(); updateSelectionState(); });
+    // socket.on('release_time_updated', (releaseTime) => { document.getElementById('release-time-display').textContent = `Сборка проекта от: ${new Date(releaseTime).toLocaleString()}`; });
+    // socket.on('disconnect', () => { console.log('Соединение с сервером потеряно'); });
 
     // --- Функции для работы с таблицей ---
 
@@ -190,7 +176,8 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast('Доставка успешно добавлена');
             closeModal('add-delivery-modal');
             document.getElementById('add-delivery-form').reset();
-            // Данные обновятся через WebSocket
+            // Перезагружаем данные через REST API
+            loadDeliveries();
         } catch (error) {
             console.error('Ошибка:', error);
             showToast(error.message, 'error');
@@ -216,7 +203,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (response.ok) {
                     showToast(`Успешно удалено ${result.deletedCount} доставок.`);
                     selectedDeliveries.clear();
-                    // Обновление через WebSocket
+                    // Перезагружаем данные через REST API
+                    loadDeliveries();
                 } else {
                     throw new Error(result.message);
                 }
@@ -319,7 +307,8 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast('Маршруты успешно созданы');
             closeModal('route-results-modal');
             selectedDeliveries.clear();
-            // Данные обновятся через сокет
+            // Перезагружаем данные через REST API
+            loadDeliveries();
         })
         .catch(error => {
             console.error('Ошибка при создании маршрута:', error);
