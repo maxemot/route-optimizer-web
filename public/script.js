@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${delivery.timeAtPoint} мин</td>
                 <td><span class="status status-${delivery.status}">${getStatusText(delivery.status)}</span></td>
                 <td class="route-id-cell">${delivery.routeId ? formatRouteId(delivery.routeId) : '—'}</td>
-                <td>${new Date(delivery.createdAt).toLocaleDateString()}</td>
+                <td>${delivery.createdAt}</td>
             `;
             deliveryTableBody.appendChild(row);
         });
