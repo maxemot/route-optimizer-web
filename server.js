@@ -23,6 +23,8 @@ const formatCreationDate = (isoString) => {
 
 const app = express();
 const server = http.createServer(app);
+
+// Инициализируем сокеты на существующем сервере
 const io = new Server(server, {
     cors: {
         origin: "*",
@@ -40,12 +42,12 @@ app.use(express.json());
 // Раздача статических файлов из папки 'public'
 app.use(express.static(path.join(__dirname, 'public')));
 
+// --- Логика WebSocket ---
 io.on('connection', (socket) => {
     console.log('🔌 Клиент подключен по WebSocket');
     
     socket.on('delete_deliveries', async (ids) => {
         try {
-            // Парсим строковые ID ("Д-xxxx") в числовые
             const numericIds = ids.map(id => parseId(id));
             if (numericIds.some(isNaN)) {
                 throw new Error("Получены некорректные ID для удаления");
@@ -56,7 +58,7 @@ io.on('connection', (socket) => {
             await kv.set('deliveries', updatedDeliveries);
 
             console.log(`🗑️ Удалены доставки с ID: ${numericIds.join(', ')}`);
-            io.emit('deliveries_deleted', ids); // Обратно отправляем строковые ID, которые получил клиент
+            io.emit('deliveries_deleted', ids);
         } catch (error) {
             console.error('Ошибка удаления доставок:', error);
             socket.emit('delete_error', 'Не удалось удалить доставки на сервере');
@@ -477,10 +479,14 @@ app.post('/api/routing', async (req, res) => {
 });
 
 
-/*
-server.listen(PORT, () => {
-    console.log(`🚀 Сервер запущен на порту ${PORT}`);
-});
-*/
+// --- Экспорт для Vercel ---
+// Vercel будет использовать этот экспорт, чтобы запустить сервер.
+// Но для локальной разработки и для того, чтобы сокеты работали,
+// нам нужно его слушать.
+if (process.env.NODE_ENV !== 'production') {
+    server.listen(PORT, () => {
+        console.log(`🚀 Локальный сервер запущен на порту ${PORT}`);
+    });
+}
 
 module.exports = server;
