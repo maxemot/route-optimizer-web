@@ -259,47 +259,23 @@ header p {
 
 .modal-content {
     background: white;
-    margin: 5% auto;
+    margin: auto;
     border-radius: 12px;
     max-width: 900px;
     width: 90%;
     max-height: 90vh;
     display: flex;
     flex-direction: column;
-    overflow: hidden; /* Чтобы футер не прокручивался */
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
 }
 
-.modal-header {
-    padding: 20px 24px;
-    border-bottom: 1px solid #e2e8f0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.modal-header h3 {
-    color: #2d3748;
-    font-size: 1.25rem;
-    font-weight: 600;
-}
-
-.close {
-    font-size: 24px;
-    font-weight: bold;
-    color: #a0aec0;
-    cursor: pointer;
-    transition: color 0.2s ease;
-}
-
-.close:hover {
-    color: #718096;
+.modal-header, .modal-footer {
+    flex-shrink: 0; /* Шапка и футер не сжимаются */
 }
 
 .modal-body {
     padding: 24px;
-    overflow-y: auto; /* Только эта часть будет скроллиться */
-    flex-grow: 1;
+    overflow-y: auto;
 }
 
 .modal-footer {

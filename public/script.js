@@ -548,14 +548,10 @@ function showRouteResults(routesData, isCreating) {
     routeStepsList.innerHTML = '';
     routeError.textContent = '';
 
-    // Определяем, один маршрут или несколько
     const isMultiple = Array.isArray(routesData) && routesData.length > 1;
 
     // Обновляем общие элементы модального окна
-    routeNumber.textContent = isCreating ? "Предпросмотр маршрутов" : `Маршрут №${routesData.id}`;
     createRouteBtn.textContent = isMultiple ? "Создать маршруты" : "Создать маршрут";
-
-    // Скрываем общие данные в шапке, если маршрутов несколько (или всегда, для чистоты)
     document.getElementById('route-summary').style.display = 'none';
 
     const routes = Array.isArray(routesData) ? routesData : [routesData];
@@ -568,7 +564,7 @@ function showRouteResults(routesData, isCreating) {
         routeTitle.textContent = `Маршрут ${index + 1}`;
 
         const yandexBtn = document.createElement('button');
-        yandexBtn.className = 'btn btn-primary btn-map'; // Синяя кнопка
+        yandexBtn.className = 'btn btn-primary btn-map';
         yandexBtn.textContent = 'Карта';
         yandexBtn.onclick = () => openRouteInYandexMaps(routeData.yandexMapsUrl);
 
@@ -576,7 +572,6 @@ function showRouteResults(routesData, isCreating) {
         routeTitleContainer.appendChild(yandexBtn);
         routeStepsList.appendChild(routeTitleContainer);
 
-        // Блок с информацией о маршруте (длительность, расстояние)
         const summaryDiv = document.createElement('div');
         summaryDiv.className = 'route-chunk-summary';
         summaryDiv.innerHTML = `
@@ -586,28 +581,17 @@ function showRouteResults(routesData, isCreating) {
         routeStepsList.appendChild(summaryDiv);
 
         routeData.orderedRoute.forEach((routePoint, pointIndex) => {
-            // Пропускаем первую (склад) и последнюю (склад) точки для нумерации
-            if (pointIndex === 0 || pointIndex === routeData.orderedRoute.length - 1) {
-                 const step = document.createElement('div');
-                 step.className = 'route-step route-step-depot'; // Особый класс для склада
-                 const addressSpan = document.createElement('span');
-                 addressSpan.className = 'route-step-address';
-                 addressSpan.textContent = `📍 ${routePoint.address}`;
-                 step.appendChild(addressSpan);
-                 routeStepsList.appendChild(step);
-                 return;
-            }
-
+            const isDepot = routePoint.address.includes("Поповка");
             const step = document.createElement('div');
-            step.className = 'route-step';
-            
+            step.className = isDepot ? 'route-step route-step-depot' : 'route-step';
+
             const addressSpan = document.createElement('span');
             addressSpan.className = 'route-step-address';
-            addressSpan.textContent = `${pointIndex}. ${routePoint.address}`;
-
+            addressSpan.textContent = isDepot ? `📍 Поповка` : `${pointIndex}. ${routePoint.address}`;
             step.appendChild(addressSpan);
 
-            if (routePoint.travelTimeToPoint !== null) {
+            const isLastPoint = pointIndex === routeData.orderedRoute.length - 1;
+            if ((!isDepot || isLastPoint) && routePoint.travelTimeToPoint !== null) {
                 const timeSpan = document.createElement('span');
                 timeSpan.className = 'route-step-time';
                 const distanceText = formatDistance(routePoint.distanceToPointByRoad).text;
@@ -615,14 +599,13 @@ function showRouteResults(routesData, isCreating) {
                 timeSpan.textContent = `${distanceText}, ${durationText}`;
                 step.appendChild(timeSpan);
             }
-
+            
             routeStepsList.appendChild(step);
         });
     });
 
-    // Показываем/скрываем основную кнопку создания
     createRouteBtn.style.display = isCreating ? 'inline-block' : 'none';
-    openYandexMapsBtn.style.display = 'none'; // Всегда скрываем, т.к. есть кнопки для каждого маршрута
+    openYandexMapsBtn.style.display = 'none';
 
     openModal(routeModal);
 }

@@ -286,7 +286,7 @@ app.post('/api/optimize-route', async (req, res) => {
              return res.status(404).json({ error: 'Одна или несколько выбранных доставок не найдены в базе' });
         }
 
-        const startPoint = { address: "Поповка", coordinates: "37.298805 56.150459" };
+        const startPoint = { address: "Поповка, Московская обл., 141892", coordinates: "37.298805 56.150459" };
         const points = [startPoint, ...selectedDeliveries.map(d => ({ address: d.address, coordinates: d.coordinates, id: d.id, timeAtPoint: d.timeAtPoint || 0 }))];
         const coordinates = points.map(p => p.coordinates);
 
