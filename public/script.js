@@ -385,6 +385,10 @@ function formatDuration(seconds) {
     return { value: seconds, text: text.trim() || 'меньше минуты' };
 }
 
+function formatDistance(meters) {
+    return { value: meters, text: (meters / 1000).toFixed(1) + ' км' };
+}
+
 // Управление выбором
 function toggleSelectAll() {
     const checkboxes = document.querySelectorAll('.delivery-checkbox');
@@ -563,8 +567,9 @@ function showRouteResults(routeData, isCreating) {
         if (routePoint.travelTimeToPoint !== null) {
             const timeSpan = document.createElement('span');
             timeSpan.className = 'route-step-time';
-            const duration = formatDuration(routePoint.travelTimeToPoint);
-            timeSpan.textContent = `(+ ${duration.text})`;
+            const distanceText = formatDistance(routePoint.travelDistanceToPoint).text;
+            const durationText = formatDuration(routePoint.travelTimeToPoint).text;
+            timeSpan.textContent = `(${distanceText}, + ${durationText})`;
             step.appendChild(timeSpan);
         }
 
