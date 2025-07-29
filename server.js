@@ -300,19 +300,23 @@ app.post('/api/optimize-route', async (req, res) => {
             const currentIndex = fullPathIndices[i];
             const previousIndex = i > 0 ? fullPathIndices[i-1] : null;
         
-            const travelTimeToPoint = previousIndex !== null 
-                ? distanceMatrix.duration[previousIndex][currentIndex] 
+            const distanceToPointByLine = previousIndex !== null 
+                ? distanceMatrix.distance[previousIndex][currentIndex] 
                 : null;
             
-            const travelDistanceToPoint = previousIndex !== null
-                ? distanceMatrix.distance[previousIndex][currentIndex]
+            const distanceToPointByRoad = distanceToPointByLine !== null ? distanceToPointByLine * 1.44 : null;
+
+            const speedMps = 30 * 1000 / 3600; // 30 км/ч в м/с
+            const travelTimeToPoint = distanceToPointByRoad !== null
+                ? Math.round(distanceToPointByRoad / speedMps)
                 : null;
-        
+
             orderedRoute.push({
                 address: addresses[currentIndex],
+                deliveryId: selectedDeliveries[currentIndex - 1] ? selectedDeliveries[currentIndex - 1].id : null,
                 travelTimeToPoint: travelTimeToPoint,
-                distanceToPointByLine: travelDistanceToPoint,
-                distanceToPointByRoad: travelDistanceToPoint !== null ? travelDistanceToPoint * 1.44 : null,
+                distanceToPointByLine: distanceToPointByLine,
+                distanceToPointByRoad: distanceToPointByRoad,
             });
         }
         
