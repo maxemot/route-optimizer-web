@@ -187,8 +187,8 @@ app.post('/api/deliveries', async (req, res) => {
         if (!newDelivery || !newDelivery.address || !newDelivery.coordinates) {
             return res.status(400).json({ error: 'Некорректные данные для доставки' });
         }
-        // ИЗМЕНЕНИЕ СТАТУСА: Принудительно ставим 'pending' и добавляем дату создания
-        newDelivery.status = 'pending';
+        
+        newDelivery.status = 'new';
         newDelivery.createdAt = new Date().toISOString(); 
 
         const deliveries = await kv.get('deliveries') || [];
