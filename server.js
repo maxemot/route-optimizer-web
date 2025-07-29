@@ -311,7 +311,7 @@ app.post('/api/optimize-route', async (req, res) => {
                 const totalChunkServiceTime = newChunk.reduce((sum, p) => sum + (p.timeAtPoint || 0) * 60, 0);
 
                 if (currentChunk.length > 0 && chunkSolution.duration + totalChunkServiceTime > MAX_ROUTE_DURATION_SECONDS) {
-                    routes.push(buildRouteFromChunk(currentChunk, startPoint, allDeliveries));
+                    routes.push(await buildRouteFromChunk(currentChunk, startPoint, allDeliveries));
                     currentChunk = [waypoint];
                 } else {
                     currentChunk.push(waypoint);
@@ -319,7 +319,7 @@ app.post('/api/optimize-route', async (req, res) => {
             }
 
             if (currentChunk.length > 0) {
-                routes.push(buildRouteFromChunk(currentChunk, startPoint, allDeliveries));
+                routes.push(await buildRouteFromChunk(currentChunk, startPoint, allDeliveries));
             }
         }
 
