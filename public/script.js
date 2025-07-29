@@ -418,7 +418,7 @@ document.addEventListener('DOMContentLoaded', () => {
             routeChunkContainer.appendChild(titleContainer);
     
             const summary = document.createElement('p');
-            summary.innerHTML = `Расстояние: <strong>${(route.totalDistanceByRoad / 1000).toFixed(1)} км</strong>, Время: <strong>${formatDuration(route.totalDuration)}</strong>`;
+            summary.innerHTML = `Расстояние: <strong>${route.totalDistanceByRoad.text}</strong>, Время: <strong>${route.totalDuration.text}</strong>`;
             routeChunkContainer.appendChild(summary);
     
             const stepsList = document.createElement('ol');
