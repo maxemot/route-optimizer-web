@@ -428,10 +428,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    document.getElementById('add-delivery-form').addEventListener('submit', function(event) {
+    document.getElementById('save-delivery').addEventListener('click', function(event) {
         event.preventDefault();
         const address = document.getElementById('delivery-address').value;
-        const timeAtPoint = parseInt(document.getElementById('time-at-point').value, 10);
+        const timeAtPoint = parseInt(document.getElementById('delivery-time').value, 10);
         if (address && timeAtPoint > 0) {
             addDelivery(address, timeAtPoint);
         }
