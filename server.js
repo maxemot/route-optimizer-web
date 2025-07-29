@@ -288,54 +288,27 @@ app.post('/api/optimize-route', async (req, res) => {
         coordinates.unshift(startPoint.coordinates);
 
         console.log(`🚗 Оптимизация маршрута для ${addresses.length} точек (включая старт/финиш):`);
-        addresses.forEach((addr, i) => console.log(`  ${i}. ${addr} (${coordinates[i]})`));
+        addresses.forEach((addr, i) => console.log(`    ${i}. ${addr} (${coordinates[i]})`));
 
         const distanceMatrix = await calculateMockDistanceMatrix(coordinates);
         const solution = solveTsp(distanceMatrix.duration, distanceMatrix.distance);
-        
-        const fullPathIndices = [0, ...solution.path, 0];
 
-        const orderedRoute = [];
-        for (let i = 0; i < fullPathIndices.length; i++) {
-            const currentIndex = fullPathIndices[i];
-            const previousIndex = i > 0 ? fullPathIndices[i-1] : null;
-        
-            const distanceToPointByLine = previousIndex !== null 
-                ? distanceMatrix.distance[previousIndex][currentIndex] 
-                : null;
-            
-            const distanceToPointByRoad = distanceToPointByLine !== null ? distanceToPointByLine * 1.44 : null;
-
-            const speedMps = 30 * 1000 / 3600; // 30 км/ч в м/с
-            const travelTimeToPoint = distanceToPointByRoad !== null
-                ? Math.round(distanceToPointByRoad / speedMps)
-                : null;
-
-            orderedRoute.push({
-                address: addresses[currentIndex],
-                deliveryId: selectedDeliveries[currentIndex - 1] ? selectedDeliveries[currentIndex - 1].id : null,
-                travelTimeToPoint: travelTimeToPoint,
-                distanceToPointByLine: distanceToPointByLine,
-                distanceToPointByRoad: distanceToPointByRoad,
-            });
+        const edgeDistances = [];
+        if (solution.path.length > 0) {
+            edgeDistances.push(distanceMatrix.distance[0][solution.path[0]]); // Склад -> первая точка
+            for (let i = 0; i < solution.path.length - 1; i++) {
+                edgeDistances.push(distanceMatrix.distance[solution.path[i]][solution.path[i + 1]]); // Точка -> точка
+            }
+            edgeDistances.push(distanceMatrix.distance[solution.path[solution.path.length - 1]][0]); // Последняя точка -> склад
         }
         
-        const yandexMapsUrl = 'https://yandex.ru/maps/?rtext=' + orderedRoute.map(r => encodeURIComponent(r.address)).join('~') + '&rtt=auto';
+        const result = buildResultObject(solution.path, edgeDistances, addresses.map(a => ({address: a})), selectedDeliveries);
 
-        const result = {
-            orderedRoute,
-            totalDistanceByLine: formatDistance(solution.distance),
-            totalDistanceByRoad: formatDistance(solution.distance * 1.44),
-            totalDuration: formatDuration(solution.duration),
-            yandexMapsUrl,
-            calculatedAt: new Date().toISOString(),
-            deliveryIds: deliveryIds
-        };
+        console.log(`✅ Маршрут построен: ${result.totalDistanceByRoad.text}, ${result.totalDuration.text}`);
+        res.status(200).json(result);
 
-        console.log(`✅ Маршрут построен: ${result.totalDistanceByLine.text}, ${result.totalDuration.text}`);
-        res.json(result);
     } catch (error) {
-        console.error('❌ Ошибка при оптимизации маршрута:', error);
+        console.error("❌ Ошибка в /api/optimize-route:", error);
         res.status(500).json({ error: 'Внутренняя ошибка сервера при оптимизации маршрута' });
     }
 });
@@ -441,6 +414,62 @@ function solveTsp(timeMatrix, distanceMatrix) {
     const totalDuration = Math.round((finalDistance * 1.44) / speedMps);
 
     return { path: waypointTour, duration: totalDuration, distance: finalDistance };
+}
+
+function buildResultObject(path, edgeDistances, allAddresses, allDeliveries) {
+    const depotAddress = allAddresses[0].address;
+    const speedMps = 30 * 1000 / 3600;
+
+    let orderedRoute = [{
+        address: depotAddress,
+        deliveryId: null, travelTimeToPoint: null, distanceToPointByLine: null, distanceToPointByRoad: null
+    }];
+
+    let deliveryIds = [];
+    
+    // Путь от склада до первой точки и между точками
+    path.forEach((pointIndex, i) => {
+        const address = allAddresses[pointIndex].address;
+        const delivery = allDeliveries.find(d => d.address === address);
+        if (delivery) {
+            deliveryIds.push(delivery.id);
+        }
+
+        const distance = edgeDistances[i];
+        orderedRoute.push({
+            address: address,
+            deliveryId: delivery ? delivery.id : null,
+            travelTimeToPoint: Math.round((distance * 1.44) / speedMps),
+            distanceToPointByLine: distance,
+            distanceToPointByRoad: distance * 1.44,
+        });
+    });
+
+    // Добавляем последний шаг - возвращение на склад
+    const returnToDepotDistance = edgeDistances[edgeDistances.length - 1];
+    orderedRoute.push({
+        address: depotAddress,
+        deliveryId: null,
+        travelTimeToPoint: Math.round((returnToDepotDistance * 1.44) / speedMps),
+        distanceToPointByLine: returnToDepotDistance,
+        distanceToPointByRoad: returnToDepotDistance * 1.44,
+    });
+    
+    const totalDistanceByLine = edgeDistances.reduce((a, b) => a + b, 0);
+    const totalDistanceByRoad = totalDistanceByLine * 1.44;
+    const totalDuration = Math.round(totalDistanceByRoad / speedMps);
+    
+    const yandexMapsUrl = 'https://yandex.ru/maps/?rtext=' + orderedRoute.map(r => encodeURIComponent(r.address)).join('~') + '&rtt=auto';
+
+    return {
+        orderedRoute,
+        totalDistanceByLine: formatDistance(totalDistanceByLine),
+        totalDistanceByRoad: formatDistance(totalDistanceByRoad),
+        totalDuration: formatDuration(totalDuration),
+        yandexMapsUrl,
+        calculatedAt: new Date().toISOString(),
+        deliveryIds: deliveryIds,
+    };
 }
 
 function formatDistance(meters) {
