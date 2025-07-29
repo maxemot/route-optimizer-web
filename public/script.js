@@ -567,7 +567,7 @@ function showRouteResults(routeData, isCreating) {
         if (routePoint.travelTimeToPoint !== null) {
             const timeSpan = document.createElement('span');
             timeSpan.className = 'route-step-time';
-            const distanceText = formatDistance(routePoint.travelDistanceToPoint).text;
+            const distanceText = formatDistance(routePoint.distanceToPointByRoad).text;
             const durationText = formatDuration(routePoint.travelTimeToPoint).text;
             timeSpan.textContent = `(${distanceText}, + ${durationText})`;
             step.appendChild(timeSpan);

@@ -308,7 +308,8 @@ app.post('/api/optimize-route', async (req, res) => {
             orderedRoute.push({
                 address: addresses[currentIndex],
                 travelTimeToPoint: travelTimeToPoint,
-                travelDistanceToPoint: travelDistanceToPoint,
+                distanceToPointByLine: travelDistanceToPoint,
+                distanceToPointByRoad: travelDistanceToPoint !== null ? travelDistanceToPoint * 1.44 : null,
             });
         }
         
