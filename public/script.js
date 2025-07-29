@@ -486,4 +486,5 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Инициализация ---
     closeAllModals();
     initializeEventListeners();
+    socket.emit('get_initial_data');
 }); 
