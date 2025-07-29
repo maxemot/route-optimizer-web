@@ -546,7 +546,7 @@ async function handleCreateRoute() {
 function showRouteResults(routeData, isCreating) {
     routeNumber.textContent = isCreating ? "Новый маршрут" : `Маршрут №${routeData.id}`;
     deliveriesCount.textContent = routeData.deliveryIds ? routeData.deliveryIds.length : routeData.orderedRoute.length - 2;
-    totalDistance.textContent = routeData.totalDistance.text;
+    totalDistance.textContent = routeData.totalDistanceByRoad.text;
     totalDuration.textContent = routeData.totalDuration.text;
     
     // Показываем/скрываем кнопки

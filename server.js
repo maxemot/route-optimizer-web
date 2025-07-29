@@ -317,14 +317,15 @@ app.post('/api/optimize-route', async (req, res) => {
 
         const result = {
             orderedRoute,
-            totalDistance: formatDistance(solution.distance),
+            totalDistanceByLine: formatDistance(solution.distance),
+            totalDistanceByRoad: formatDistance(solution.distance * 1.44),
             totalDuration: formatDuration(solution.duration),
             yandexMapsUrl,
             calculatedAt: new Date().toISOString(),
             deliveryIds: deliveryIds
         };
 
-        console.log(`✅ Маршрут построен: ${result.totalDistance.text}, ${result.totalDuration.text}`);
+        console.log(`✅ Маршрут построен: ${result.totalDistanceByLine.text}, ${result.totalDuration.text}`);
         res.json(result);
     } catch (error) {
         console.error('❌ Ошибка при оптимизации маршрута:', error);
