@@ -17,8 +17,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Модальные окна
     const modals = {
-        'add-delivery-modal': document.getElementById('delivery-modal'),
-        'route-results-modal': document.getElementById('route-modal'),
+        'delivery-modal': document.getElementById('delivery-modal'),
+        'route-modal': document.getElementById('route-modal'),
     };
     const routeSummary = document.getElementById('route-summary');
     const routeStepsList = document.getElementById('route-steps-list');
@@ -122,7 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${delivery.volume || '1.0'}</td>
                 <td>${delivery.timeAtPoint} мин</td>
                 <td>${delivery.createdAt}</td>
-                <td class="route-id-cell">${delivery.routeId || '—'}</td>
+                <td>${delivery.routeId ? `<span class="route-id-link">${delivery.routeId}</span>` : '—'}</td>
             `;
             deliveryTableBody.appendChild(row);
         });
@@ -131,11 +131,8 @@ document.addEventListener('DOMContentLoaded', () => {
         deliveryTableBody.querySelectorAll('.row-checkbox').forEach(checkbox => {
             checkbox.addEventListener('change', handleRowSelection);
         });
-        deliveryTableBody.querySelectorAll('.route-id-cell').forEach(cell => {
-            if (cell.textContent !== '—') {
-                cell.classList.add('clickable');
-                cell.addEventListener('click', handleRouteIdClick);
-            }
+        deliveryTableBody.querySelectorAll('.route-id-link').forEach(link => {
+            link.addEventListener('click', handleRouteIdClick);
         });
     }
 
@@ -218,7 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(errorData.error || 'Ошибка при добавлении доставки');
             }
             showToast('Доставка успешно добавлена');
-            closeModal('add-delivery-modal');
+            closeModal('delivery-modal');
             document.getElementById('delivery-address').value = '';
             document.getElementById('delivery-volume').value = '1.0';
             document.getElementById('delivery-time').value = '15';
@@ -286,7 +283,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Ошибка при оптимизации маршрута:', error);
             showToast(`Ошибка оптимизации: ${error.message}`, 'error');
             routeError.textContent = `Ошибка: ${error.message}`;
-            openModal('route-results-modal');
+            openModal('route-modal');
         }
     }
 
@@ -355,7 +352,7 @@ document.addEventListener('DOMContentLoaded', () => {
         })
         .then(data => {
             showToast('Маршруты успешно созданы');
-            closeModal('route-results-modal');
+            closeModal('route-modal');
             selectedDeliveries.clear();
             // Перезагружаем данные через REST API
             loadDeliveries();
@@ -393,7 +390,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
         if (!routesData || routesData.length === 0) {
             routeError.textContent = 'Нет данных для отображения.';
-            openModal('route-results-modal');
+            openModal('route-modal');
             return;
         }
     
@@ -448,7 +445,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     
         createRouteBtn.style.display = isViewing ? 'none' : 'block';
-        openModal('route-results-modal');
+        openModal('route-modal');
     }
 
     // --- Модальные окна ---
@@ -548,7 +545,7 @@ document.addEventListener('DOMContentLoaded', () => {
         selectAllCheckbox.addEventListener('change', toggleSelectAll);
         deleteDeliveriesBtn.addEventListener('click', handleDeleteDeliveries);
         deleteRoutesBtn.addEventListener('click', handleDeleteRoutes);
-        addDeliveryBtn.addEventListener('click', () => openModal('add-delivery-modal'));
+        addDeliveryBtn.addEventListener('click', () => openModal('delivery-modal'));
         optimizeRouteBtn.addEventListener('click', optimizeSelectedRoute);
         createRouteBtn.addEventListener('click', handleCreateRoute);
     }
