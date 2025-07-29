@@ -72,57 +72,68 @@ io.on('connection', (socket) => {
 
 app.post('/api/routes', async (req, res) => {
     try {
-        const { deliveryIds, orderedAddresses, totalDistance, totalDuration, yandexMapsUrl } = req.body;
-        if (!deliveryIds || deliveryIds.length === 0) {
-            return res.status(400).json({ error: 'Не предоставлены ID доставок для создания маршрута' });
+        const routesToCreate = req.body;
+        if (!Array.isArray(routesToCreate) || routesToCreate.length === 0) {
+            return res.status(400).json({ error: 'Не предоставлены маршруты для создания' });
         }
 
-        // --- ИСПРАВЛЕНИЕ: Парсим строковые ID в числовые ---
-        const numericDeliveryIds = deliveryIds.map(id => parseId(id));
-        if (numericDeliveryIds.some(isNaN)) {
-            return res.status(400).json({ error: 'Некорректный формат ID доставки' });
-        }
-
-        // 1. Генерируем новый номер маршрута (теперь это просто число)
-        const routeId = await kv.incr('nextRouteId');
-
-        // 2. Сохраняем сам маршрут в отдельный список с ЧИСЛОВЫМИ ID доставок
-        const newRoute = { id: routeId, deliveryIds: numericDeliveryIds, orderedAddresses, totalDistance, totalDuration, yandexMapsUrl, createdAt: new Date().toISOString() };
-        const routes = await kv.get('routes') || [];
-        await kv.set('routes', [...routes, newRoute]);
-
-        // 3. Обновляем доставки, добавляя им числовой номер маршрута
-        const deliveries = await kv.get('deliveries') || [];
-        const deliveriesToUpdate = [];
-        const allOtherDeliveries = [];
-
-        deliveries.forEach(d => {
-            // --- ИСПРАВЛЕНИЕ: Используем массив числовых ID для поиска ---
-            if (numericDeliveryIds.includes(d.id)) {
-                // ИЗМЕНЕНИЕ СТАТУСА: Теперь при создании маршрута статус становится 'ready'
-                deliveriesToUpdate.push({ ...d, routeId: routeId, status: 'ready' });
-            } else {
-                allOtherDeliveries.push(d);
-            }
-        });
-
-        await kv.set('deliveries', [...allOtherDeliveries, ...deliveriesToUpdate]);
+        const allDeliveries = await kv.get('deliveries') || [];
+        const allRoutes = await kv.get('routes') || [];
+        let nextRouteId = (await kv.get('nextRouteId')) || 1;
         
-        // 4. Оповещаем клиентов, отправляя отформатированные данные
-        const formattedDeliveriesToUpdate = deliveriesToUpdate.map(d => ({
+        const createdRoutes = [];
+        const deliveriesToUpdate = new Map();
+
+        for (const routeData of routesToCreate) {
+            const { deliveryIds, orderedRoute, totalDistanceByRoad, totalDuration, yandexMapsUrl } = routeData;
+            const numericDeliveryIds = deliveryIds.map(id => parseId(id));
+            
+            const newRoute = {
+                id: nextRouteId,
+                deliveryIds: numericDeliveryIds,
+                orderedAddresses: orderedRoute.map(r => r.address),
+                totalDistance: totalDistanceByRoad,
+                totalDuration: totalDuration,
+                yandexMapsUrl,
+                createdAt: new Date().toISOString()
+            };
+
+            allRoutes.push(newRoute);
+            createdRoutes.push(newRoute);
+
+            numericDeliveryIds.forEach(id => {
+                const delivery = allDeliveries.find(d => d.id === id);
+                if (delivery) {
+                    deliveriesToUpdate.set(id, { ...delivery, routeId: nextRouteId, status: 'ready' });
+                }
+            });
+
+            nextRouteId++;
+        }
+
+        const finalDeliveries = allDeliveries.map(d => deliveriesToUpdate.has(d.id) ? deliveriesToUpdate.get(d.id) : d);
+
+        await kv.set('routes', allRoutes);
+        await kv.set('deliveries', finalDeliveries);
+        await kv.set('nextRouteId', nextRouteId);
+
+        const formattedDeliveriesToUpdate = Array.from(deliveriesToUpdate.values()).map(d => ({
             ...d,
             id: formatDeliveryId(d.id),
-            routeId: d.routeId ? formatRouteId(d.routeId) : null,
+            routeId: formatRouteId(d.routeId),
             createdAt: formatCreationDate(d.createdAt)
         }));
-        io.emit('deliveries_updated', formattedDeliveriesToUpdate);
-        console.log(`🗺️ Создан новый маршрут #${routeId} для доставок: ${numericDeliveryIds.join(', ')}`);
 
-        // Отдаем на фронт тоже отформатированный маршрут
-        res.status(201).json({
-            ...newRoute,
-            id: formatRouteId(newRoute.id)
-        });
+        io.emit('deliveries_updated', formattedDeliveriesToUpdate);
+        console.log(`🗺️ Создано новых маршрутов: ${createdRoutes.length}`);
+
+        const formattedCreatedRoutes = createdRoutes.map(r => ({
+            ...r,
+            id: formatRouteId(r.id)
+        }));
+
+        res.status(201).json(formattedCreatedRoutes);
+
     } catch (error) {
         console.error('Ошибка создания маршрута:', error);
         res.status(500).json({ error: 'Не удалось создать маршрут' });
@@ -262,56 +273,92 @@ app.post('/api/geocode', async (req, res) => {
 
 app.post('/api/optimize-route', async (req, res) => {
     try {
-        const { deliveryIds } = req.body; // Получаем массив строковых ID ("Д-xxxx")
+        const { deliveryIds } = req.body;
         if (!deliveryIds || deliveryIds.length < 1) {
             return res.status(400).json({ error: 'Необходимо предоставить минимум 1 адрес' });
         }
 
-        const numericDeliveryIds = deliveryIds.map(id => parseId(id));
-        if (numericDeliveryIds.some(isNaN)) {
-            return res.status(400).json({ error: 'Некорректный формат ID доставки' });
-        }
-
-        // Получаем все доставки и фильтруем нужные по числовым ID
         const allDeliveries = await kv.get('deliveries') || [];
+        const numericDeliveryIds = deliveryIds.map(id => parseId(id));
         const selectedDeliveries = allDeliveries.filter(d => numericDeliveryIds.includes(d.id));
 
         if (selectedDeliveries.length !== numericDeliveryIds.length) {
              return res.status(404).json({ error: 'Одна или несколько выбранных доставок не найдены в базе' });
         }
 
-        let addresses = selectedDeliveries.map(d => d.address);
-        let coordinates = selectedDeliveries.map(d => d.coordinates);
-        
         const startPoint = { address: "Поповка, Московская обл., 141892", coordinates: "37.298805 56.150459" };
-        addresses.unshift(startPoint.address);
-        coordinates.unshift(startPoint.coordinates);
+        const points = [startPoint, ...selectedDeliveries.map(d => ({ address: d.address, coordinates: d.coordinates, id: d.id, timeAtPoint: d.timeAtPoint || 0 }))];
+        const coordinates = points.map(p => p.coordinates);
 
-        console.log(`🚗 Оптимизация маршрута для ${addresses.length} точек (включая старт/финиш):`);
-        addresses.forEach((addr, i) => console.log(`    ${i}. ${addr} (${coordinates[i]})`));
+        console.log(`🚗 Оптимизация маршрута для ${points.length} точек (включая старт/финиш).`);
 
         const distanceMatrix = await calculateMockDistanceMatrix(coordinates);
         const solution = solveTsp(distanceMatrix.duration, distanceMatrix.distance);
+        const orderedWaypoints = solution.path.map(index => points[index]);
 
-        const edgeDistances = [];
-        if (solution.path.length > 0) {
-            edgeDistances.push(distanceMatrix.distance[0][solution.path[0]]); // Склад -> первая точка
-            for (let i = 0; i < solution.path.length - 1; i++) {
-                edgeDistances.push(distanceMatrix.distance[solution.path[i]][solution.path[i + 1]]); // Точка -> точка
+        const MAX_ROUTE_DURATION_SECONDS = 8 * 3600;
+        const routes = [];
+        let currentChunk = [];
+
+        if (orderedWaypoints.length > 0) {
+            for (const waypoint of orderedWaypoints) {
+                const newChunk = [...currentChunk, waypoint];
+                const newChunkPoints = [startPoint, ...newChunk];
+                const newChunkCoords = newChunkPoints.map(p => p.coordinates);
+                const chunkMatrix = await calculateMockDistanceMatrix(newChunkCoords);
+                const chunkSolution = solveTsp(chunkMatrix.duration, chunkMatrix.distance);
+
+                const totalChunkServiceTime = newChunk.reduce((sum, p) => sum + (p.timeAtPoint || 0) * 60, 0);
+
+                if (currentChunk.length > 0 && chunkSolution.duration + totalChunkServiceTime > MAX_ROUTE_DURATION_SECONDS) {
+                    routes.push(buildRouteFromChunk(currentChunk, startPoint, allDeliveries));
+                    currentChunk = [waypoint];
+                } else {
+                    currentChunk.push(waypoint);
+                }
             }
-            edgeDistances.push(distanceMatrix.distance[solution.path[solution.path.length - 1]][0]); // Последняя точка -> склад
-        }
-        
-        const result = buildResultObject(solution.path, edgeDistances, addresses.map(a => ({address: a})), selectedDeliveries);
 
-        console.log(`✅ Маршрут построен: ${result.totalDistanceByRoad.text}, ${result.totalDuration.text}`);
-        res.status(200).json(result);
+            if (currentChunk.length > 0) {
+                routes.push(buildRouteFromChunk(currentChunk, startPoint, allDeliveries));
+            }
+        }
+
+        console.log(`✅ Маршруты построены: ${routes.length} шт.`);
+        res.status(200).json(routes);
 
     } catch (error) {
         console.error("❌ Ошибка в /api/optimize-route:", error);
         res.status(500).json({ error: 'Внутренняя ошибка сервера при оптимизации маршрута' });
     }
 });
+
+async function buildRouteFromChunk(chunk, startPoint, allDeliveries) {
+    const pointsInRoute = [startPoint, ...chunk];
+    const coordinates = pointsInRoute.map(p => p.coordinates);
+    const matrix = await calculateMockDistanceMatrix(coordinates);
+    const solution = solveTsp(matrix.duration, matrix.distance);
+
+    const edgeDistances = [];
+    const orderedPathIndices = [0, ...solution.path]; // 0 is startPoint
+
+    for (let i = 0; i < orderedPathIndices.length - 1; i++) {
+        edgeDistances.push(matrix.distance[orderedPathIndices[i]][orderedPathIndices[i + 1]]);
+    }
+    edgeDistances.push(matrix.distance[orderedPathIndices[orderedPathIndices.length - 1]][0]);
+
+    const selectedDeliveriesInChunk = chunk.map(p => allDeliveries.find(d => d.id === p.id)).filter(Boolean);
+
+    const addressesForBuilder = pointsInRoute.map(p => ({ address: p.address }));
+    
+    const result = buildResultObject(
+        solution.path, 
+        edgeDistances, 
+        addressesForBuilder, 
+        selectedDeliveriesInChunk
+    );
+    return result;
+}
+
 
 async function calculateMockDistanceMatrix(coordinates) {
     const n = coordinates.length;
@@ -427,6 +474,8 @@ function buildResultObject(path, edgeDistances, allAddresses, allDeliveries) {
 
     let deliveryIds = [];
     
+    const totalServiceTime = allDeliveries.reduce((sum, d) => sum + (d.timeAtPoint || 0) * 60, 0);
+
     // Путь от склада до первой точки и между точками
     path.forEach((pointIndex, i) => {
         const address = allAddresses[pointIndex].address;
@@ -438,7 +487,7 @@ function buildResultObject(path, edgeDistances, allAddresses, allDeliveries) {
         const distance = edgeDistances[i];
         orderedRoute.push({
             address: address,
-            deliveryId: delivery ? delivery.id : null,
+            deliveryId: delivery ? formatDeliveryId(delivery.id) : null,
             travelTimeToPoint: Math.round((distance * 1.44) / speedMps),
             distanceToPointByLine: distance,
             distanceToPointByRoad: distance * 1.44,
@@ -457,7 +506,8 @@ function buildResultObject(path, edgeDistances, allAddresses, allDeliveries) {
     
     const totalDistanceByLine = edgeDistances.reduce((a, b) => a + b, 0);
     const totalDistanceByRoad = totalDistanceByLine * 1.44;
-    const totalDuration = Math.round(totalDistanceByRoad / speedMps);
+    const travelDuration = Math.round(totalDistanceByRoad / speedMps);
+    const totalDuration = travelDuration + totalServiceTime;
     
     const yandexMapsUrl = 'https://yandex.ru/maps/?rtext=' + orderedRoute.map(r => encodeURIComponent(r.address)).join('~') + '&rtt=auto';
 
@@ -468,7 +518,7 @@ function buildResultObject(path, edgeDistances, allAddresses, allDeliveries) {
         totalDuration: formatDuration(totalDuration),
         yandexMapsUrl,
         calculatedAt: new Date().toISOString(),
-        deliveryIds: deliveryIds,
+        deliveryIds: deliveryIds.map(id => typeof id === 'number' ? formatDeliveryId(id) : id),
     };
 }
 

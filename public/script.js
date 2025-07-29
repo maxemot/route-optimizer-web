@@ -483,12 +483,9 @@ async function optimizeSelectedRoute() {
     try {
         showLoader('Оптимизация маршрута...');
         const deliveryIds = selectedDeliveries.map(d => d.id);
-        const routeData = await fetchOptimizedRoute(deliveryIds);
+        const routesData = await fetchOptimizedRoute(deliveryIds);
 
-        currentRouteData = {
-            ...routeData,
-            deliveryIds: deliveryIds
-        };
+        currentRouteData = routesData; // Теперь это массив маршрутов
 
         hideLoader();
         showRouteResults(currentRouteData, true); // Показываем модалку с кнопкой "Создать"
@@ -524,15 +521,15 @@ async function handleCreateRoute() {
         const response = await fetch('/api/routes', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(currentRouteData),
+            body: JSON.stringify(currentRouteData), // Отправляем весь массив
         });
 
         if (!response.ok) {
             throw new Error('Не удалось сохранить маршрут на сервере');
         }
 
-        const newRoute = await response.json();
-        console.log('🎉 Маршрут успешно создан:', newRoute);
+        const newRoutes = await response.json(); // Получаем массив созданных маршрутов
+        console.log('🎉 Маршруты успешно созданы:', newRoutes);
 
         hideLoader();
         closeModal(routeModal);
@@ -546,40 +543,62 @@ async function handleCreateRoute() {
 }
 
 
-function showRouteResults(routeData, isCreating) {
-    routeNumber.textContent = isCreating ? "Новый маршрут" : `Маршрут №${routeData.id}`;
-    deliveriesCount.textContent = routeData.deliveryIds ? routeData.deliveryIds.length : routeData.orderedRoute.length - 2;
-    totalDistance.textContent = routeData.totalDistanceByRoad.text;
-    totalDuration.textContent = routeData.totalDuration.text;
-    
-    // Показываем/скрываем кнопки
-    createRouteBtn.style.display = isCreating ? 'inline-block' : 'none';
-    openYandexMapsBtn.style.display = routeData.yandexMapsUrl ? 'inline-block' : 'none';
-
+function showRouteResults(routesData, isCreating) {
+    // Очищаем предыдущие результаты
     routeStepsList.innerHTML = '';
-    routeData.orderedRoute.forEach((routePoint, index) => {
-        const step = document.createElement('div');
-        step.className = 'route-step';
+    routeError.textContent = '';
 
-        const addressSpan = document.createElement('span');
-        addressSpan.className = 'route-step-address';
-        addressSpan.textContent = `${index + 1}. ${routePoint.address}`;
+    // Определяем, один маршрут или несколько
+    const isMultiple = Array.isArray(routesData) && routesData.length > 1;
 
-        step.appendChild(addressSpan);
+    // Обновляем общие элементы модального окна
+    routeNumber.textContent = isCreating ? "Предпросмотр маршрутов" : `Маршрут №${routesData.id}`;
+    createRouteBtn.textContent = isMultiple ? "Создать маршруты" : "Создать маршрут";
 
-        if (routePoint.travelTimeToPoint !== null) {
-            const timeSpan = document.createElement('span');
-            timeSpan.className = 'route-step-time';
-            const distanceText = formatDistance(routePoint.distanceToPointByRoad).text;
-            const durationText = formatDuration(routePoint.travelTimeToPoint).text;
-            timeSpan.textContent = `${distanceText}, ${durationText}`;
-            step.appendChild(timeSpan);
+    // Скрываем общие данные, если маршрутов несколько
+    document.getElementById('route-summary').style.display = isMultiple ? 'none' : 'flex';
+
+    const routes = Array.isArray(routesData) ? routesData : [routesData];
+
+    routes.forEach((routeData, index) => {
+        if (isMultiple) {
+            const routeTitle = document.createElement('h3');
+            routeTitle.className = 'route-chunk-title';
+            routeTitle.textContent = `Маршрут ${index + 1}`;
+            routeStepsList.appendChild(routeTitle);
         }
 
-        routeStepsList.appendChild(step);
+        // Блок с информацией о маршруте (длительность, расстояние)
+        const summaryDiv = document.createElement('div');
+        summaryDiv.className = 'route-chunk-summary';
+        summaryDiv.innerHTML = `
+            <span>Общее расстояние: <strong>${routeData.totalDistanceByRoad.text}</strong></span>
+            <span>Общее время: <strong>${routeData.totalDuration.text}</strong></span>
+        `;
+        routeStepsList.appendChild(summaryDiv);
+
+        routeData.orderedRoute.forEach((routePoint, pointIndex) => {
+            const step = document.createElement('div');
+            step.className = 'route-step';
+            const addressSpan = document.createElement('span');
+            addressSpan.className = 'route-step-address';
+            addressSpan.textContent = `${pointIndex + 1}. ${routePoint.address}`;
+            step.appendChild(addressSpan);
+            routeStepsList.appendChild(step);
+        });
+
+        // Кнопка "Открыть на карте" для каждого маршрута
+        const yandexBtn = document.createElement('button');
+        yandexBtn.className = 'button secondary-button';
+        yandexBtn.innerHTML = `<img src="https://yastatic.net/iconins/_/7pJs3KqM62P24NAaD5ejwGZ_DqY.ico" alt="Yandex" class="button-icon"> Открыть на карте`;
+        yandexBtn.onclick = () => openRouteInYandexMaps(routeData.yandexMapsUrl);
+        routeStepsList.appendChild(yandexBtn);
     });
 
-    routeError.textContent = '';
+    // Показываем/скрываем основную кнопку создания
+    createRouteBtn.style.display = isCreating ? 'inline-block' : 'none';
+    openYandexMapsBtn.style.display = 'none'; // Всегда скрываем, т.к. есть кнопки для каждого маршрута
+
     openModal(routeModal);
 }
 
