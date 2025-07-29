@@ -29,8 +29,7 @@ const io = new Server(server, {
     cors: {
         origin: "*",
         methods: ["GET", "POST"]
-    },
-    transports: ['websocket'] // Разрешаем только WebSocket
+    }
 });
 
 const YANDEX_API_KEY = process.env.YANDEX_API_KEY || "7726ddb0-76da-4747-8007-d84dfe2fb93f";
