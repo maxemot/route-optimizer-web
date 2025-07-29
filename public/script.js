@@ -596,7 +596,11 @@ function showRouteResults(routesData, isCreating) {
                 timeSpan.className = 'route-step-time';
                 const distanceText = formatDistance(routePoint.distanceToPointByRoad).text;
                 const durationText = formatDuration(routePoint.travelTimeToPoint).text;
-                timeSpan.textContent = `${distanceText}, ${durationText}`;
+                let serviceTimeHtml = '';
+                if (routePoint.timeAtPoint && routePoint.timeAtPoint > 0) {
+                    serviceTimeHtml = ` <span class="service-time">+ ${routePoint.timeAtPoint}мин</span>`;
+                }
+                timeSpan.innerHTML = `${distanceText}, ${durationText}${serviceTimeHtml}`;
                 step.appendChild(timeSpan);
             }
             

@@ -491,6 +491,7 @@ function buildResultObject(path, edgeDistances, allAddresses, allDeliveries) {
             travelTimeToPoint: Math.round((distance * 1.44) / speedMps),
             distanceToPointByLine: distance,
             distanceToPointByRoad: distance * 1.44,
+            timeAtPoint: delivery ? delivery.timeAtPoint : null
         });
     });
 

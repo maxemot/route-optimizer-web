@@ -383,6 +383,11 @@ header p {
     font-size: 14px;
 }
 
+.route-step-time .service-time {
+    color: #9DA9F4;
+    font-weight: 500;
+}
+
 .route-actions {
     display: flex;
     gap: 12px;
