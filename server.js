@@ -298,6 +298,33 @@ app.post('/api/deliveries', async (req, res) => {
     }
 });
 
+app.delete('/api/deliveries', async (req, res) => {
+    try {
+        const { ids } = req.body;
+        if (!ids || !Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ error: 'Не предоставлены ID для удаления' });
+        }
+        
+        const numericIds = ids.map(id => parseId(id));
+
+        const deliveries = await kv.get('deliveries') || [];
+        const updatedDeliveries = deliveries.filter(d => !numericIds.includes(d.id));
+        
+        await kv.set('deliveries', updatedDeliveries);
+        
+        console.log(`🗑️ Удалены доставки с ID: ${numericIds.join(', ')}`);
+        
+        res.status(200).json({ 
+            message: `Успешно удалено ${ids.length} доставок.`,
+            deletedCount: deliveries.length - updatedDeliveries.length
+        });
+
+    } catch (error) {
+        console.error('Ошибка удаления доставок в KV:', error);
+        res.status(500).json({ error: 'Не удалось удалить доставки' });
+    }
+});
+
 app.get('/api/release-time', async (req, res) => {
     try {
         const releaseTime = await kv.get('releaseTime') || new Date().toISOString();
