@@ -262,13 +262,9 @@ app.post('/api/geocode', async (req, res) => {
 
 app.post('/api/optimize-route', async (req, res) => {
     try {
-        const { deliveryIds } = req.body;
+        const { deliveryIds } = req.body; // Получаем массив строковых ID ("Д-xxxx")
         if (!deliveryIds || deliveryIds.length < 1) {
             return res.status(400).json({ error: 'Необходимо предоставить минимум 1 адрес' });
-        }
-        
-        if (deliveryIds.length > 9) {
-            return res.status(400).json({ error: 'Расчет маршрута возможен не более чем для 9 адресов. Пожалуйста, выберите меньше точек.' });
         }
 
         const numericDeliveryIds = deliveryIds.map(id => parseId(id));
