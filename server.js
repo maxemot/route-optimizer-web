@@ -168,6 +168,43 @@ app.get('/api/routes/:id', async (req, res) => {
     }
 });
 
+app.delete('/api/routes', async (req, res) => {
+    try {
+        const { routeIds } = req.body;
+
+        if (!routeIds || !Array.isArray(routeIds) || routeIds.length === 0) {
+            return res.status(400).json({ message: 'Необходимо предоставить массив ID маршрутов для удаления.' });
+        }
+
+        const allRoutes = await kv.get('routes') || [];
+        const routesToKeep = allRoutes.filter(route => !routeIds.includes(route.id));
+        await kv.set('routes', routesToKeep);
+
+        const allDeliveries = await kv.get('deliveries') || [];
+        const updatedDeliveries = allDeliveries.map(delivery => {
+            if (delivery.routeId && routeIds.includes(delivery.routeId)) {
+                return {
+                    ...delivery,
+                    routeId: null,
+                    status: 'new'
+                };
+            }
+            return delivery;
+        });
+        await kv.set('deliveries', updatedDeliveries);
+
+        io.emit('deliveries_updated', updatedDeliveries);
+        
+        console.log(`Удаленные маршруты: ${routeIds.join(', ')}. Связанные доставки обновлены.`);
+        res.status(200).json({ 
+            message: 'Маршруты успешно удалены', 
+            deletedCount: allRoutes.length - routesToKeep.length 
+        });
+    } catch (error) {
+        console.error('Ошибка при удалении маршрутов:', error);
+        res.status(500).json({ message: 'Внутренняя ошибка сервера' });
+    }
+});
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));

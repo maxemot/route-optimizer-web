@@ -1,665 +1,489 @@
-// Глобальные переменные
-// let deliveries = []; // Удаляем, теперь данные на сервере
-// let nextDeliveryId = 1; // Удаляем, ID управляет сервер
-let geocodedAddresses = {};
-let socket = null; // Глобальная переменная для сокета
+document.addEventListener('DOMContentLoaded', () => {
+    // --- Глобальные переменные и константы ---
+    const deliveryTableBody = document.querySelector('#delivery-table tbody');
+    const selectAllCheckbox = document.getElementById('select-all');
+    const deleteDeliveriesBtn = document.getElementById('delete-deliveries-btn');
+    const addDeliveryBtn = document.getElementById('add-delivery-btn');
+    const optimizeRouteBtn = document.getElementById('optimize-route-btn');
+    const selectionInfo = document.querySelector('.selection-info');
+    const createRouteBtn = document.getElementById('create-route-btn');
+    const deleteRoutesBtn = document.getElementById('delete-routes-btn');
 
-// DOM элементы
-const addDeliveryBtn = document.getElementById('add-delivery-btn');
-const optimizeRouteBtn = document.getElementById('optimize-route-btn');
-const selectedCount = document.getElementById('selected-count');
-const deliveriesTable = document.getElementById('deliveries-table');
-const deliveriesTbody = document.getElementById('deliveries-tbody');
-const selectAllCheckbox = document.getElementById('select-all');
-const deleteDeliveriesBtn = document.getElementById('delete-deliveries-btn');
+    let deliveries = [];
+    let selectedDeliveries = new Set();
+    let currentRouteData = null;
 
-// Модальные окна
-const deliveryModal = document.getElementById('delivery-modal');
-const routeModal = document.getElementById('route-modal');
-const loader = document.getElementById('loader');
+    // Модальные окна
+    const modals = {
+        'add-delivery-modal': document.getElementById('add-delivery-modal'),
+        'route-results-modal': document.getElementById('route-results-modal'),
+    };
+    const routeSummary = document.getElementById('route-summary');
+    const routeStepsList = document.getElementById('route-steps-list');
+    const openYandexMapsBtn = document.getElementById('open-yandex-maps');
+    const routeError = document.getElementById('route-error');
 
-// Элементы формы добавления доставки
-const deliveryAddress = document.getElementById('delivery-address');
-const deliveryVolume = document.getElementById('delivery-volume');
-const deliveryTime = document.getElementById('delivery-time');
-const addressCoordinates = document.getElementById('address-coordinates');
-const addressError = document.getElementById('address-error');
-const saveDeliveryBtn = document.getElementById('save-delivery');
-const cancelDeliveryBtn = document.getElementById('cancel-delivery');
-
-// Элементы результатов маршрута
-const routeNumber = document.getElementById('route-number');
-const deliveriesCount = document.getElementById('deliveries-count');
-const totalDistance = document.getElementById('total-distance');
-const totalDuration = document.getElementById('total-duration');
-const routeStepsList = document.getElementById('route-steps-list');
-const openYandexMapsBtn = document.getElementById('open-yandex-maps');
-const createRouteBtn = document.getElementById('create-route-btn'); // Новая кнопка
-const routeError = document.getElementById('route-error');
-
-let currentRouteData = null;
-
-// Функция для принудительного закрытия всех модальных окон
-function closeAllModals() {
-    const modals = document.querySelectorAll('.modal');
-    modals.forEach(modal => {
-        modal.classList.remove('show');
-        // modal.style.display = 'none'; // УДАЛЕНО: эта строка мешала открытию окон
-    });
-}
-
-// Инициализация
-document.addEventListener('DOMContentLoaded', function() {
-    closeAllModals();
-    initializeEventListeners();
-    loadAndRenderDeliveries();
-    initializeWebSocket(); // Инициализируем WebSocket
-    updateUI();
-});
-
-function initializeWebSocket() {
-    socket = io(); // ПРАВИЛЬНО: Инициализируем глобальную переменную
+    // --- Сокеты ---
+    const socket = io();
 
     socket.on('connect', () => {
-        console.log('✅ WebSocket-соединение установлено');
-    });
-
-    socket.on('new_delivery', (newDelivery) => {
-        console.log('📦 Получена новая доставка по WebSocket:', newDelivery);
-
-        // Проверяем, не отображена ли уже эта доставка
-        if (document.querySelector(`tr[data-delivery-id='${newDelivery.id}']`)) {
-            console.log(`Доставка #${newDelivery.id} уже есть в таблице.`);
-            return;
-        }
-
-        // Добавляем новую строку, если ее нет
-        const emptyStateRow = deliveriesTbody.querySelector('.empty-state');
-        if (emptyStateRow) {
-            emptyStateRow.parentElement.innerHTML = '';
-        }
-        const newRow = createDeliveryRow(newDelivery);
-        deliveriesTbody.appendChild(newRow);
-        updateUI();
+        console.log('Соединение с сервером установлено');
+        socket.emit('get_initial_data');
     });
 
     socket.on('deliveries_updated', (updatedDeliveries) => {
-        console.log('🔄 Получено обновление для доставок:', updatedDeliveries);
-        updatedDeliveries.forEach(delivery => {
-            const row = document.querySelector(`tr[data-delivery-id='${delivery.id}']`);
-            if (row) {
-                // Заменяем всю строку целиком, чтобы обновить все данные и обработчики
-                const newRow = createDeliveryRow(delivery);
-                row.parentNode.replaceChild(newRow, row);
-            }
-        });
-        updateUI();
+        deliveries = updatedDeliveries.map(d => ({ ...d, id: parseInt(d.id, 10) }));
+        renderTable();
+        updateSelectionState();
     });
 
-    socket.on('deliveries_deleted', (ids) => {
-        console.log(`🗑️ Получено событие на удаление доставок:`, ids);
-        ids.forEach(id => {
-            const row = document.querySelector(`tr[data-delivery-id='${id}']`);
-            if (row) {
-                row.remove();
-            }
-        });
-        updateUI(); // Обновляем счетчики и состояние кнопок
-    });
-    
-    socket.on('delete_error', (errorMessage) => {
-        console.error('Ошибка удаления:', errorMessage);
-        alert(errorMessage);
+    socket.on('release_time_updated', (releaseTime) => {
+        document.getElementById('release-time-display').textContent = `Сборка проекта от: ${new Date(releaseTime).toLocaleString()}`;
     });
 
     socket.on('disconnect', () => {
-        console.warn('❌ WebSocket-соединение разорвано');
+        console.log('Соединение с сервером потеряно');
     });
-}
 
+    // --- Функции для работы с таблицей ---
 
-async function loadAndRenderDeliveries() {
-    try {
-        showLoader('Загрузка доставок...');
-        const response = await fetch('/api/deliveries');
-        if (!response.ok) {
-            throw new Error('Не удалось загрузить данные');
+    function renderTable() {
+        deliveryTableBody.innerHTML = '';
+        if (deliveries.length === 0) {
+            deliveryTableBody.innerHTML = '<tr><td colspan="7" class="text-center">Нет данных для отображения</td></tr>';
+            return;
         }
-        const deliveries = await response.json();
-        renderDeliveriesTable(deliveries);
-        hideLoader();
-    } catch (error) {
-        console.error('Ошибка загрузки доставок:', error);
-        hideLoader();
-        alert('Не удалось загрузить список доставок. Попробуйте обновить страницу.');
-    }
-}
 
-function initializeEventListeners() {
-    // Кнопки управления
-    addDeliveryBtn.addEventListener('click', openDeliveryModal);
-    optimizeRouteBtn.addEventListener('click', optimizeSelectedRoute);
-    selectAllCheckbox.addEventListener('change', toggleSelectAll);
-    deleteDeliveriesBtn.addEventListener('click', handleDeleteSelected);
+        deliveries.sort((a, b) => a.id - b.id);
 
-    // Модальные окна
-    const closeButtons = document.querySelectorAll('.close');
-    closeButtons.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const modal = this.closest('.modal');
-            closeModal(modal);
-        });
-    });
+        deliveries.forEach(delivery => {
+            const row = document.createElement('tr');
+            row.dataset.deliveryId = delivery.id;
+            if (selectedDeliveries.has(String(delivery.id))) {
+                row.classList.add('selected');
+            }
 
-    // Закрытие модального окна по клику вне его
-    window.addEventListener('click', function(event) {
-        if (event.target.classList.contains('modal') && event.target.classList.contains('show')) {
-            closeModal(event.target);
-        }
-    });
-
-    // Форма добавления доставки
-    deliveryAddress.addEventListener('blur', handleAddressBlur);
-    deliveryAddress.addEventListener('input', clearAddressError);
-    saveDeliveryBtn.addEventListener('click', saveDelivery);
-    cancelDeliveryBtn.addEventListener('click', () => closeModal(deliveryModal));
-
-    // Результаты маршрута
-    openYandexMapsBtn.addEventListener('click', () => openRouteInYandexMaps(currentRouteData?.yandexMapsUrl));
-    createRouteBtn.addEventListener('click', handleCreateRoute);
-}
-
-// Работа с модальными окнами
-function openModal(modal) {
-    modal.classList.add('show');
-}
-
-function closeModal(modal) {
-    modal.classList.remove('show');
-    if (modal === deliveryModal) {
-        clearDeliveryForm();
-    }
-}
-
-function openDeliveryModal() {
-    openModal(deliveryModal);
-    deliveryAddress.focus(); // Фокус на поле ввода адреса
-}
-
-function clearDeliveryForm() {
-    deliveryAddress.value = '';
-    deliveryVolume.value = '1.0';
-    deliveryTime.value = '15';
-    addressCoordinates.textContent = '';
-    addressError.textContent = '';
-}
-
-// Геокодирование
-async function handleAddressBlur() {
-    const address = deliveryAddress.value.trim();
-    if (!address) return;
-
-    if (geocodedAddresses[address]) {
-        displayCoordinates(geocodedAddresses[address]);
-        return;
-    }
-
-    try {
-        showAddressLoading();
-        const coordinates = await geocodeAddress(address);
-        geocodedAddresses[address] = coordinates;
-        displayCoordinates(coordinates);
-        clearAddressError();
-    } catch (error) {
-        showAddressError('Не удалось найти координаты для данного адреса');
-        addressCoordinates.textContent = '';
-    }
-}
-
-function showAddressLoading() {
-    addressCoordinates.textContent = 'Поиск координат...';
-    addressCoordinates.style.color = '#718096';
-}
-
-function displayCoordinates(coordinates) {
-    addressCoordinates.textContent = `📍 ${coordinates}`;
-    addressCoordinates.style.color = '#38a169';
-}
-
-function showAddressError(message) {
-    addressError.textContent = message;
-}
-
-function clearAddressError() {
-    addressError.textContent = '';
-}
-
-async function geocodeAddress(address) {
-    const response = await fetch('/api/geocode', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ address }),
-    });
-
-    if (!response.ok) {
-        throw new Error('Ошибка геокодирования');
-    }
-
-    const data = await response.json();
-    return data.coordinates;
-}
-
-// Управление доставками
-async function saveDelivery() {
-    const address = deliveryAddress.value.trim();
-    const volume = parseFloat(deliveryVolume.value);
-    const timeAtPoint = parseInt(deliveryTime.value);
-
-    if (!address || !geocodedAddresses[address] || volume <= 0 || timeAtPoint <= 0) {
-        showAddressError('Пожалуйста, введите корректный адрес и дождитесь получения координат');
-        return;
-    }
-
-    const newDeliveryData = {
-        // id и status будут присвоены сервером
-        address: address,
-        coordinates: geocodedAddresses[address],
-        volume: volume,
-        timeAtPoint: timeAtPoint,
-        routeId: null
-    };
-
-    try {
-        showLoader('Сохранение...');
-        const response = await fetch('/api/deliveries', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(newDeliveryData),
+            row.innerHTML = `
+                <td><input type="checkbox" class="row-checkbox" ${selectedDeliveries.has(String(delivery.id)) ? 'checked' : ''}></td>
+                <td>${formatDeliveryId(delivery.id)}</td>
+                <td>${delivery.address}</td>
+                <td>${delivery.timeAtPoint} мин</td>
+                <td><span class="status status-${delivery.status}">${getStatusText(delivery.status)}</span></td>
+                <td class="route-id-cell">${delivery.routeId ? formatRouteId(delivery.routeId) : '—'}</td>
+                <td>${new Date(delivery.createdAt).toLocaleDateString()}</td>
+            `;
+            deliveryTableBody.appendChild(row);
         });
 
-        if (!response.ok) {
-            throw new Error('Ошибка при сохранении доставки на сервере');
-        }
-        
-        const savedDelivery = await response.json(); // Получаем созданную доставку с ID
-
-        // Отрисовка теперь происходит через WebSocket, поэтому этот блок не нужен.
-        // Сервер отправит событие 'new_delivery' всем клиентам (включая этого),
-        // и доставка будет добавлена в таблицу в обработчике socket.on('new_delivery').
-        
-        hideLoader();
-        closeModal(deliveryModal);
-        updateUI();
-
-    } catch (error) {
-        console.error('Ошибка сохранения:', error);
-        hideLoader();
-        alert(error.message);
-    }
-}
-
-function renderDeliveriesTable(deliveries) {
-    deliveriesTbody.innerHTML = '';
-
-    if (!deliveries || deliveries.length === 0) {
-        // Показываем пустое состояние
-        const emptyRow = document.createElement('tr');
-        emptyRow.innerHTML = `
-            <td colspan="8" class="empty-state">
-                <span class="empty-state-icon">📦</span>
-                <h3>Доставки не добавлены</h3>
-                <p>Нажмите кнопку "➕ Добавить доставку" чтобы создать первую доставку</p>
-            </td>
-        `;
-        deliveriesTbody.appendChild(emptyRow);
-        return;
+        // Повторно навешиваем обработчики на новые строки
+        deliveryTableBody.querySelectorAll('.row-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', handleRowSelection);
+        });
+        deliveryTableBody.querySelectorAll('.route-id-cell').forEach(cell => {
+            if (cell.textContent !== '—') {
+                cell.classList.add('clickable');
+                cell.addEventListener('click', handleRouteIdClick);
+            }
+        });
     }
 
-    deliveries.forEach(delivery => {
-        const row = createDeliveryRow(delivery);
-        deliveriesTbody.appendChild(row);
-    });
-    // После отрисовки обновляем состояние кнопок и чекбоксов
-    updateSelectionState(deliveries);
-}
-
-function createDeliveryRow(delivery) {
-    const row = document.createElement('tr');
-    row.dataset.deliveryId = delivery.id;
-
-    const statusBadge = getStatusBadge(delivery.status);
-    const routeCell = delivery.routeId
-        ? `<a href="#" class="route-link" onclick="openRouteFromLink(event)" data-route="${delivery.routeId}">${delivery.routeId}</a>`
-        : '';
-    const creationDate = delivery.createdAt || ''; // Получаем дату
-
-    row.innerHTML = `
-        <td>
-            <input type="checkbox" class="delivery-checkbox" data-delivery-id="${delivery.id}" onchange="updateSelectionState()">
-        </td>
-        <td class="delivery-number">${delivery.id}</td>
-        <td title="${delivery.address}">${truncateText(delivery.address, 40)}</td>
-        <td class="coordinates-display">${delivery.coordinates}</td>
-        <td>${statusBadge}</td>
-        <td>${delivery.volume} м³</td>
-        <td>${delivery.timeAtPoint} мин</td>
-        <td>${creationDate}</td>
-        <td>${routeCell}</td>
-    `;
-
-    return row;
-}
-
-function getStatusBadge(status) {
-    const statusLabels = {
-        'new': 'Новая',
-        'pending': 'Ожидает',
-        'ready': 'Готов',
-        'in-route': 'В пути',
-        'delivered': 'Доставлен'
-    };
-
-    return `<span class="status-badge status-${status}">${statusLabels[status] || status}</span>`;
-}
-
-function createRouteLink(routeId) {
-    if (routeId) {
-        return `<a href="#" class="route-link" onclick="openRouteFromLink(event)" data-route="${routeId}">Просмотр</a>`;
-    }
-    return 'Не назначен';
-}
-
-function truncateText(text, maxLength) {
-    if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength) + '...';
-}
-
-function formatDistance(meters) {
-    if (meters === null || meters === undefined) return { value: null, text: '' };
-    const km = meters / 1000;
-    return { value: meters, text: `${Math.round(km)}км` };
-}
-
-function formatDuration(seconds) {
-    if (seconds === null || seconds === undefined) return { value: null, text: '' };
-    const h = Math.floor(seconds / 3600);
-    const m = Math.round((seconds % 3600) / 60);
-    let parts = [];
-    if (h > 0) parts.push(`${h}ч`);
-    if (m > 0 || h === 0) parts.push(`${m}мин`);
-    return { value: seconds, text: parts.join(' ') };
-}
-
-// Управление выбором
-function toggleSelectAll() {
-    const checkboxes = document.querySelectorAll('.delivery-checkbox');
-    checkboxes.forEach(checkbox => {
-        checkbox.checked = selectAllCheckbox.checked;
-    });
-    updateSelectionState();
-}
-
-function updateSelectionState(deliveries) { // deliveries необязателен, но может пригодиться
-    const checkboxes = document.querySelectorAll('.delivery-checkbox');
-    const checkedBoxes = document.querySelectorAll('.delivery-checkbox:checked');
-
-    // Обновляем состояние "Выбрать все"
-    selectAllCheckbox.indeterminate = checkedBoxes.length > 0 && checkedBoxes.length < checkboxes.length;
-    selectAllCheckbox.checked = checkedBoxes.length === checkboxes.length && checkboxes.length > 0;
-
-    // Обновляем счетчик
-    selectedCount.textContent = `Выбрано: ${checkedBoxes.length} доставок`;
-
-    // Управляем доступностью кнопки оптимизации
-    optimizeRouteBtn.disabled = checkedBoxes.length < 1;
-    deleteDeliveriesBtn.disabled = checkedBoxes.length === 0;
-
-    // Выделяем выбранные строки
-    checkboxes.forEach(checkbox => {
+    function handleRowSelection(event) {
+        const checkbox = event.target;
         const row = checkbox.closest('tr');
+        const deliveryId = row.dataset.deliveryId;
+
         if (checkbox.checked) {
+            selectedDeliveries.add(deliveryId);
             row.classList.add('selected');
         } else {
+            selectedDeliveries.delete(deliveryId);
             row.classList.remove('selected');
         }
-    });
-}
-
-function updateUI() {
-    updateSelectionState();
-}
-
-async function handleDeleteSelected() {
-    const checkedBoxes = document.querySelectorAll('.delivery-checkbox:checked');
-    if (checkedBoxes.length === 0) {
-        return;
+        updateSelectionState();
     }
     
-    if (!confirm(`Вы уверены, что хотите удалить ${checkedBoxes.length} доставок?`)) {
-        return;
+    function toggleSelectAll() {
+        const checkboxes = deliveryTableBody.querySelectorAll('.row-checkbox');
+        const allRowsSelected = selectAllCheckbox.checked;
+        
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = allRowsSelected;
+            const deliveryId = checkbox.closest('tr').dataset.deliveryId;
+            if (allRowsSelected) {
+                selectedDeliveries.add(deliveryId);
+                 checkbox.closest('tr').classList.add('selected');
+            } else {
+                selectedDeliveries.delete(deliveryId);
+                checkbox.closest('tr').classList.remove('selected');
+            }
+        });
+        updateSelectionState();
     }
     
-    // ID теперь строки (напр. "Д-0007"), parseInt не нужен.
-    // Сервер ожидает массив числовых ID, но бэкенд будет парсить строки.
-    // ОШИБКА: на самом деле, сокет-обработчик на сервере не парсит ID. 
-    // Нужно отправлять числовые ID. Но фронтенд их не знает.
-    // Давайте исправим это: будем хранить числовой ID в другом data-атрибуте.
-    // Это изменение мы внесем в createDeliveryRow. А здесь пока оставим как есть,
-    // но вернемся к этому.
-    // --- ВРЕМЕННОЕ РЕШЕНИЕ ---
-    // Давайте пока отправлять строковые ID, а на сервере их парсить.
-    // Это проще, чем менять фронтенд.
-    const idsToDelete = Array.from(checkedBoxes).map(cb => cb.closest('tr').dataset.deliveryId);
-    
-    // Используем существующее соединение для отправки события
-    if (socket && socket.connected) { // Улучшенная проверка
-        socket.emit('delete_deliveries', idsToDelete);
-    } else {
-        console.error('Сокет не инициализирован или не подключен.');
-        alert('Не удалось подключиться к серверу для удаления. Пожалуйста, обновите страницу.');
-    }
-}
+    function updateSelectionState() {
+        const selectedCount = selectedDeliveries.size;
+        
+        // Управление состоянием основного чекбокса
+        const totalRows = deliveryTableBody.querySelectorAll('.row-checkbox').length;
+        selectAllCheckbox.checked = selectedCount > 0 && selectedCount === totalRows;
+        selectAllCheckbox.indeterminate = selectedCount > 0 && selectedCount < totalRows;
 
-// Оптимизация маршрута
-async function optimizeSelectedRoute() {
-    const checkedBoxes = document.querySelectorAll('.delivery-checkbox:checked');
-
-    // Получаем все доставки с сервера, чтобы иметь актуальные данные
-    const response = await fetch('/api/deliveries');
-    const deliveries = await response.json();
-
-    const selectedDeliveries = Array.from(checkedBoxes).map(checkbox => {
-        const deliveryId = checkbox.dataset.deliveryId; // Просто берем строковый ID
-        return { id: deliveryId };
-    }).filter(d => d);
-
-    if (selectedDeliveries.length < 1) {
-        alert('Выберите минимум 1 доставку для построения маршрута');
-        return;
-    }
-
-    try {
-        showLoader('Оптимизация маршрута...');
-        const deliveryIds = selectedDeliveries.map(d => d.id);
-        const routesData = await fetchOptimizedRoute(deliveryIds);
-
-        currentRouteData = routesData; // Теперь это массив маршрутов
-
-        hideLoader();
-        showRouteResults(currentRouteData, true); // Показываем модалку с кнопкой "Создать"
-        updateUI();
-
-    } catch (error) {
-        hideLoader();
-        showRouteError('Ошибка при построении маршрута: ' + error.message);
-    }
-}
-
-async function fetchOptimizedRoute(deliveryIds) {
-    const response = await fetch('/api/optimize-route', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deliveryIds }),
-    });
-
-    if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || 'Ошибка сервера при оптимизации маршрута');
-    }
-
-    return await response.json();
-}
-
-
-async function handleCreateRoute() {
-    if (!currentRouteData) return;
-
-    try {
-        showLoader('Создание маршрута...');
-        const response = await fetch('/api/routes', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(currentRouteData), // Отправляем весь массив
+        // Управление состоянием кнопок
+        const hasNew = Array.from(selectedDeliveries).some(id => {
+            const delivery = deliveries.find(d => d.id === parseInt(id));
+            return delivery && delivery.status === 'new';
         });
 
-        if (!response.ok) {
-            throw new Error('Не удалось сохранить маршрут на сервере');
+        optimizeRouteBtn.disabled = !hasNew;
+        deleteDeliveriesBtn.disabled = selectedCount === 0;
+        
+        const hasRoute = Array.from(selectedDeliveries).some(id => {
+            const delivery = deliveries.find(d => d.id === parseInt(id));
+            return delivery && delivery.routeId;
+        });
+        
+        deleteRoutesBtn.style.display = hasRoute ? 'inline-block' : 'none';
+
+        if (selectedCount > 0) {
+            selectionInfo.textContent = `Выбрано: ${selectedCount}`;
+        } else {
+            selectionInfo.textContent = '';
+        }
+    }
+
+
+    // --- Функции для работы с API ---
+
+    async function addDelivery(address, timeAtPoint) {
+        try {
+            const response = await fetch('/api/deliveries', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ address, timeAtPoint })
+            });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Ошибка при добавлении доставки');
+            }
+            showToast('Доставка успешно добавлена');
+            closeModal('add-delivery-modal');
+            document.getElementById('add-delivery-form').reset();
+            // Данные обновятся через WebSocket
+        } catch (error) {
+            console.error('Ошибка:', error);
+            showToast(error.message, 'error');
+        }
+    }
+    
+    async function handleDeleteDeliveries() {
+        const idsToDelete = Array.from(selectedDeliveries).map(id => parseInt(id, 10));
+        if (idsToDelete.length === 0) {
+            showToast('Не выбрано ни одной доставки для удаления.', 'warning');
+            return;
         }
 
-        const newRoutes = await response.json(); // Получаем массив созданных маршрутов
-        console.log('🎉 Маршруты успешно созданы:', newRoutes);
-
-        hideLoader();
-        closeModal(routeModal);
-        // Обновления в таблице произойдут через WebSocket
-
-    } catch (error) {
-        console.error('Ошибка создания маршрута:', error);
-        hideLoader();
-        alert(error.message);
-    }
-}
-
-
-function showRouteResults(routesData, isCreating) {
-    // Очищаем предыдущие результаты
-    routeStepsList.innerHTML = '';
-    routeError.textContent = '';
-
-    const isMultiple = Array.isArray(routesData) && routesData.length > 1;
-
-    // Обновляем общие элементы модального окна
-    createRouteBtn.textContent = isMultiple ? "Создать маршруты" : "Создать маршрут";
-    document.getElementById('route-summary').style.display = 'none';
-
-    const routes = Array.isArray(routesData) ? routesData : [routesData];
-
-    routes.forEach((routeData, index) => {
-        const routeTitleContainer = document.createElement('div');
-        routeTitleContainer.className = 'route-chunk-title';
-
-        const routeTitle = document.createElement('h3');
-        routeTitle.textContent = `Маршрут ${index + 1}`;
-
-        const yandexBtn = document.createElement('button');
-        yandexBtn.className = 'btn btn-primary btn-map';
-        yandexBtn.textContent = 'Карта';
-        yandexBtn.onclick = () => openRouteInYandexMaps(routeData.yandexMapsUrl);
-
-        routeTitleContainer.appendChild(routeTitle);
-        routeTitleContainer.appendChild(yandexBtn);
-        routeStepsList.appendChild(routeTitleContainer);
-
-        const summaryDiv = document.createElement('div');
-        summaryDiv.className = 'route-chunk-summary';
-        summaryDiv.innerHTML = `
-            <span>Расстояние: <strong>${routeData.totalDistanceByRoad.text}</strong>,</span>
-            <span>Время: <strong>${routeData.totalDuration.text}</strong></span>
-        `;
-        routeStepsList.appendChild(summaryDiv);
-
-        routeData.orderedRoute.forEach((routePoint, pointIndex) => {
-            const isDepot = routePoint.address.includes("Поповка");
-            const step = document.createElement('div');
-            step.className = isDepot ? 'route-step route-step-depot' : 'route-step';
-
-            const addressSpan = document.createElement('span');
-            addressSpan.className = 'route-step-address';
-            addressSpan.textContent = isDepot ? `📍 Поповка` : `${pointIndex}. ${routePoint.address}`;
-            step.appendChild(addressSpan);
-
-            const isLastPoint = pointIndex === routeData.orderedRoute.length - 1;
-            if ((!isDepot || isLastPoint) && routePoint.travelTimeToPoint !== null) {
-                const timeSpan = document.createElement('span');
-                timeSpan.className = 'route-step-time';
-                const distanceText = formatDistance(routePoint.distanceToPointByRoad).text;
-                const durationText = formatDuration(routePoint.travelTimeToPoint).text;
-                let serviceTimeHtml = '';
-                if (routePoint.timeAtPoint && routePoint.timeAtPoint > 0) {
-                    serviceTimeHtml = ` <span class="service-time">+ ${routePoint.timeAtPoint}мин</span>`;
+        const userConfirmed = confirm(`Вы уверены, что хотите удалить ${idsToDelete.length} доставок?`);
+        if (userConfirmed) {
+            try {
+                const response = await fetch('/api/deliveries', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ids: idsToDelete })
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    showToast(`Успешно удалено ${result.deletedCount} доставок.`);
+                    selectedDeliveries.clear();
+                    // Обновление через WebSocket
+                } else {
+                    throw new Error(result.message);
                 }
-                timeSpan.innerHTML = `${distanceText}, ${durationText}${serviceTimeHtml}`;
-                step.appendChild(timeSpan);
+            } catch (error) {
+                console.error('Ошибка при удалении доставок:', error);
+                showToast(`Ошибка: ${error.message}`, 'error');
             }
-            
-            routeStepsList.appendChild(step);
+        }
+    }
+
+    async function optimizeSelectedRoute() {
+        const deliveryIds = Array.from(selectedDeliveries).map(id => parseInt(id, 10));
+        if (deliveryIds.length === 0) {
+            showToast('Выберите доставки для оптимизации.', 'warning');
+            return;
+        }
+        
+        console.log("Оптимизация для ID:", deliveryIds);
+
+        try {
+            const response = await fetch('/api/optimize-route', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ deliveryIds })
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.message || 'Ошибка на сервере');
+            }
+            console.log("Ответ от сервера:", data);
+            currentRouteData = data; 
+            showRouteResults(data);
+        } catch (error) {
+            console.error('Ошибка при оптимизации маршрута:', error);
+            showToast(`Ошибка оптимизации: ${error.message}`, 'error');
+            routeError.textContent = `Ошибка: ${error.message}`;
+            openModal('route-results-modal');
+        }
+    }
+
+    async function handleDeleteRoutes() {
+        const routeIdsToDelete = new Set();
+        selectedDeliveries.forEach(deliveryId => {
+            const delivery = deliveries.find(d => d.id === parseInt(deliveryId));
+            if (delivery && delivery.routeId) {
+                routeIdsToDelete.add(delivery.routeId);
+            }
+        });
+
+        const uniqueRouteIds = Array.from(routeIdsToDelete);
+
+        if (uniqueRouteIds.length === 0) {
+            showToast('Не выбрано ни одного маршрута для удаления.', 'warning');
+            return;
+        }
+
+        const userConfirmed = confirm(`Вы уверены, что хотите удалить ${uniqueRouteIds.length} маршрут(ов)? Это действие отменит их для всех связанных доставок.`);
+
+        if (userConfirmed) {
+            try {
+                const response = await fetch('/api/routes', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ routeIds: uniqueRouteIds })
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    showToast(`Успешно удалено ${result.deletedCount} маршрут(ов).`);
+                    selectedDeliveries.clear();
+                    updateSelectionState();
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (error) {
+                console.error('Ошибка при удалении маршрутов:', error);
+                showToast(`Ошибка: ${error.message}`, 'error');
+            }
+        }
+    }
+
+    function handleCreateRoute() {
+        const routesToCreate = currentRouteData;
+        console.log("Отправка данных для создания маршрута:", routesToCreate);
+    
+        if (!routesToCreate || routesToCreate.length === 0) {
+            showToast('Нет данных о маршруте для создания.', 'error');
+            return;
+        }
+    
+        fetch('/api/routes', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ routes: routesToCreate }),
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => { throw new Error(err.message); });
+            }
+            return response.json();
+        })
+        .then(data => {
+            showToast('Маршруты успешно созданы');
+            closeModal('route-results-modal');
+            selectedDeliveries.clear();
+            // Данные обновятся через сокет
+        })
+        .catch(error => {
+            console.error('Ошибка при создании маршрута:', error);
+            showToast(`Ошибка: ${error.message}`, 'error');
+        });
+    }
+
+    async function handleRouteIdClick(event) {
+        const routeId = event.target.textContent;
+        try {
+            const response = await fetch(`/api/routes/${routeId}`);
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message);
+            }
+            const routeDetails = await response.json();
+            currentRouteData = [routeDetails];
+            showRouteResults([routeDetails], true); // true - режим просмотра
+        } catch (error) {
+            console.error(`Ошибка при загрузке маршрута ${routeId}:`, error);
+            showToast(`Не удалось загрузить маршрут: ${error.message}`, 'error');
+        }
+    }
+
+    // --- Функции для работы с UI ---
+
+    function showRouteResults(routesData, isViewing = false) {
+        routeStepsList.innerHTML = '';
+        routeSummary.style.display = 'none';
+        routeError.textContent = '';
+        openYandexMapsBtn.style.display = 'none';
+    
+        if (!routesData || routesData.length === 0) {
+            routeError.textContent = 'Нет данных для отображения.';
+            openModal('route-results-modal');
+            return;
+        }
+    
+        routesData.forEach((route, index) => {
+            const routeChunkContainer = document.createElement('div');
+            routeChunkContainer.className = 'route-chunk';
+    
+            const titleContainer = document.createElement('div');
+            titleContainer.className = 'route-chunk-title';
+    
+            const title = document.createElement('h4');
+            const routeId = route.id ? formatRouteId(route.id) : `Маршрут ${index + 1}`;
+            title.textContent = routeId;
+            titleContainer.appendChild(title);
+    
+            const mapLink = document.createElement('a');
+            mapLink.href = route.yandexMapsUrl;
+            mapLink.target = '_blank';
+            mapLink.className = 'btn btn-primary btn-map';
+            mapLink.textContent = 'Карта';
+            titleContainer.appendChild(mapLink);
+            routeChunkContainer.appendChild(titleContainer);
+    
+            const summary = document.createElement('p');
+            summary.innerHTML = `Расстояние: <strong>${(route.totalDistanceByRoad / 1000).toFixed(1)} км</strong>, Время: <strong>${formatDuration(route.totalDuration)}</strong>`;
+            routeChunkContainer.appendChild(summary);
+    
+            const stepsList = document.createElement('ol');
+            stepsList.className = 'route-steps';
+    
+            route.orderedRoute.forEach((step, stepIndex) => {
+                const li = document.createElement('li');
+                li.className = 'route-step';
+    
+                const addressSpan = document.createElement('span');
+                addressSpan.className = 'route-step-address';
+                addressSpan.textContent = step.address === 'Поповка, Московская обл., 141892' ? 'Поповка' : step.address;
+                li.appendChild(addressSpan);
+    
+                if (step.travelTimeToPoint != null) {
+                    const timeSpan = document.createElement('span');
+                    timeSpan.className = 'route-step-time';
+                    const serviceTimeHtml = step.timeAtPoint ? ` <span class="service-time">+ ${step.timeAtPoint}мин</span>` : '';
+                    timeSpan.innerHTML = `${(step.distanceToPointByRoad / 1000).toFixed(1)}км, ${formatDuration(step.travelTimeToPoint)}${serviceTimeHtml}`;
+                    li.appendChild(timeSpan);
+                }
+                stepsList.appendChild(li);
+            });
+    
+            routeChunkContainer.appendChild(stepsList);
+            routeStepsList.appendChild(routeChunkContainer);
+        });
+    
+        createRouteBtn.style.display = isViewing ? 'none' : 'block';
+        openModal('route-results-modal');
+    }
+
+    // --- Модальные окна ---
+    
+    function openModal(modalId) {
+        const modal = modals[modalId];
+        if (modal) {
+            modal.style.display = 'flex';
+        }
+    }
+
+    function closeModal(modalId) {
+        const modal = modals[modalId];
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    function closeAllModals() {
+        Object.values(modals).forEach(modal => modal.style.display = 'none');
+    }
+
+    window.onclick = function(event) {
+        if (event.target.classList.contains('modal')) {
+            closeAllModals();
+        }
+    };
+    
+    document.querySelectorAll('.close-btn').forEach(btn => {
+        btn.addEventListener('click', (event) => {
+            const modalId = event.target.closest('.modal').id;
+            closeModal(modalId);
         });
     });
 
-    createRouteBtn.style.display = isCreating ? 'inline-block' : 'none';
-    openYandexMapsBtn.style.display = 'none';
+    document.getElementById('add-delivery-form').addEventListener('submit', function(event) {
+        event.preventDefault();
+        const address = document.getElementById('delivery-address').value;
+        const timeAtPoint = parseInt(document.getElementById('time-at-point').value, 10);
+        if (address && timeAtPoint > 0) {
+            addDelivery(address, timeAtPoint);
+        }
+    });
 
-    openModal(routeModal);
-}
+    // --- Вспомогательные функции ---
 
-function showRouteError(message) {
-    routeError.textContent = message;
-    openModal(routeModal);
-}
-
-// Работа с Яндекс.Картами
-async function openRouteFromLink(event) {
-    event.preventDefault();
-    const routeId = event.target.dataset.route;
-    if (!routeId) return;
-
-    try {
-        showLoader('Загрузка маршрута...');
-        const response = await fetch(`/api/routes/${routeId}`);
-        if (!response.ok) throw new Error('Маршрут не найден');
-        const routeData = await response.json();
-        currentRouteData = routeData;
-        hideLoader();
-        showRouteResults(routeData, false); // Показываем модалку без кнопки "Создать"
-    } catch (error) {
-        hideLoader();
-        alert(error.message);
+    function showToast(message, type = 'success') {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.className = `toast show ${type}`;
+        setTimeout(() => {
+            toast.className = toast.className.replace('show', '');
+        }, 3000);
     }
-}
-
-function openRouteInYandexMaps(url) {
-    if (url) {
-        window.open(url, '_blank');
+    
+    function getStatusText(status) {
+        const statuses = {
+            'new': 'Новая',
+            'in-progress': 'В пути',
+            'delivered': 'Доставлена'
+        };
+        return statuses[status] || status;
     }
-}
 
-function findRouteById(routeId) {
-    // В реальном приложении здесь был бы поиск в базе данных
-    // Пока что возвращаем текущий маршрут, если ID совпадает
-    if (currentRouteData && currentRouteData.routeId == routeId) {
-        return currentRouteData;
+    function formatDeliveryId(id) {
+        return `Д-${String(id).padStart(4, '0')}`;
     }
-    return null;
-}
 
-// Вспомогательные функции
-function showLoader(message = 'Загрузка...') {
-    loader.querySelector('p').textContent = message;
-    loader.classList.remove('hidden');
-}
+    function formatRouteId(id) {
+        return `М-${String(id).padStart(4, '0')}`;
+    }
 
-function hideLoader() {
-    loader.classList.add('hidden');
-} 
+    function formatDuration(seconds) {
+        if (seconds === null || seconds === undefined) return '';
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        let result = '';
+        if (h > 0) result += `${h}ч `;
+        if (m > 0) result += `${m}мин`;
+        return result.trim() || '0мин';
+    }
+
+    function initializeEventListeners() {
+        selectAllCheckbox.addEventListener('change', toggleSelectAll);
+        deleteDeliveriesBtn.addEventListener('click', handleDeleteDeliveries);
+        deleteRoutesBtn.addEventListener('click', handleDeleteRoutes);
+        addDeliveryBtn.addEventListener('click', () => openModal('add-delivery-modal'));
+        optimizeRouteBtn.addEventListener('click', optimizeSelectedRoute);
+        createRouteBtn.addEventListener('click', handleCreateRoute);
+    }
+
+    // --- Инициализация ---
+    closeAllModals();
+    initializeEventListeners();
+}); 
