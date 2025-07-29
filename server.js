@@ -43,10 +43,27 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // --- Логика WebSocket ---
-io.on('connection', (socket) => {
+io.on('connection', async (socket) => {
     console.log('🔌 Клиент подключен по WebSocket');
     
-    // Обработчик для получения начальных данных
+    // Автоматически отправляем данные при подключении
+    try {
+        console.log('📨 Автоматическая отправка данных при подключении');
+        const deliveries = await kv.get('deliveries') || [];
+        console.log('📦 Данные из KV:', deliveries.length, 'доставок');
+        const formattedDeliveries = deliveries.map(d => ({
+            ...d,
+            id: formatDeliveryId(d.id),
+            routeId: d.routeId ? formatRouteId(d.routeId) : null,
+            createdAt: formatCreationDate(d.createdAt)
+        }));
+        console.log('✅ Отправляем данные клиенту:', formattedDeliveries.length, 'доставок');
+        socket.emit('deliveries_updated', formattedDeliveries);
+    } catch (error) {
+        console.error('❌ Ошибка при автоматической отправке данных:', error);
+    }
+    
+    // Обработчик для получения начальных данных (оставляем как резервный)
     socket.on('get_initial_data', async () => {
         console.log('📨 Получен запрос get_initial_data');
         try {
