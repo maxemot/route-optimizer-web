@@ -1,7 +1,7 @@
 {
   "name": "route-optimizer-web",
-  "version": "1.0.0",
-  "description": "Веб-сервис для оптимизации маршрутов водителей",
+  "version": "1.1.0",
+  "description": "Web service for optimizing delivery routes",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
