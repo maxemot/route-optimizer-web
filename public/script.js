@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderTable() {
         deliveryTableBody.innerHTML = '';
         if (deliveries.length === 0) {
-            deliveryTableBody.innerHTML = '<tr><td colspan="7" class="text-center">Нет данных для отображения</td></tr>';
+            deliveryTableBody.innerHTML = '<tr><td colspan="9" class="text-center">Нет данных для отображения</td></tr>';
             return;
         }
 
@@ -90,10 +90,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td><input type="checkbox" class="row-checkbox" ${selectedDeliveries.has(delivery.id) ? 'checked' : ''}></td>
                 <td>${delivery.id}</td>
                 <td>${delivery.address}</td>
-                <td>${delivery.timeAtPoint} мин</td>
+                <td>${delivery.coordinates}</td>
                 <td><span class="status status-${delivery.status}">${getStatusText(delivery.status)}</span></td>
-                <td class="route-id-cell">${delivery.routeId || '—'}</td>
+                <td>${delivery.volume || '1.0'}</td>
+                <td>${delivery.timeAtPoint} мин</td>
                 <td>${delivery.createdAt}</td>
+                <td class="route-id-cell">${delivery.routeId || '—'}</td>
             `;
             deliveryTableBody.appendChild(row);
         });
